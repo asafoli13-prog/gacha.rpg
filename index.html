@@ -222,8 +222,8 @@
           <div id="bossTitleBadge" style="text-align: center; font-size: 0.75rem; font-weight: 800; margin-bottom: 4px; color: #ff9ff3;">-</div>
           <div class="epic-arena-box">
             <div class="hp-container">
-              <span id="bossP1Label" style="color: #3498db;">Herói (HP: 100)</span>
-              <span id="bossP2Label" style="color: #e74c3c;">Chefe (HP: 150)</span>
+              <span id="bossP1Label" style="color: #3498db;">Herói (HP: 1000)</span>
+              <span id="bossP2Label" style="color: #e74c3c;">Chefe (HP: 1500)</span>
             </div>
             <canvas id="bossCanvas" width="350" height="160"></canvas>
             <div class="narration-box" id="bossNarrationText">O chefe ruge de raiva ao ver o desafiante...</div>
@@ -287,8 +287,8 @@
           
           <div class="epic-arena-box">
             <div class="hp-container">
-              <span id="p1Label" style="color: #3498db;">Tu (HP: 100)</span>
-              <span id="p2Label" style="color: #e74c3c;">Inimigo (HP: 100)</span>
+              <span id="p1Label" style="color: #3498db;">Tu (HP: 1000)</span>
+              <span id="p2Label" style="color: #e74c3c;">Inimigo (HP: 1000)</span>
             </div>
             <canvas id="epicCanvas" width="350" height="160"></canvas>
             <div class="narration-box" id="narrationText">Os lutadores encaram-se com as armas prontas...</div>
@@ -859,12 +859,13 @@
       document.getElementById('artifactSelect').value = f.artifact ? f.artifact.id : 'none';
 
       var totalWithArt = f.totalPoints + (f.artifactBonus || 0);
-      var calculatedHp = 50 + totalWithArt;
+      // NOVA ESCALA MASSIVA DE HP
+      var calculatedHp = 200 + (totalWithArt * 8);
       body.innerHTML = 
         '<div><b>👤 Nome:</b> ' + f.name + '</div>' +
         '<div><b>🛡️ Raça:</b> ' + f.race.name + '</div>' +
         '<div><b>⚔️ Arma na Mão:</b> <span style="color:#f1c40f">' + (f.race.weapon || 'Arma Padrão') + '</span></div>' +
-        '<div><b>❤️ Vida Total (HP):</b> <span style="color:#2ed573">' + calculatedHp + ' HP</span></div>' +
+        '<div><b>❤️ Vida Total (HP):</b> <span style="color:#2ed573">' + calculatedHp.toLocaleString() + ' HP</span></div>' +
         '<div><b>⚡ Velocidade:</b> ' + f.speed + '</div>' +
         '<div><b>🏋️ Força:</b> ' + f.strength + '</div>' +
         '<div><b>🛡️ Resistência:</b> ' + f.defense + '</div>' +
@@ -1001,10 +1002,10 @@
         } else {
           playSound('crit');
           var totalPts = f.totalPoints + (f.artifactBonus || 0);
-          // Novo cálculo de dano balanceado proporcional
-          var baseDmg = Math.round(totalPts * 0.15) + Math.floor(Math.random() * 5) + 5;
+          // NOVO CÁLCULO DE DANO ESCALADO (compatível com HP em milhares)
+          var baseDmg = Math.round(totalPts * 2.5) + Math.floor(Math.random() * 20) + 10;
           
-          dummyTexts.push({ x: 210, y: 50, text: "-" + baseDmg + " HP", color: "#ff4757", alpha: 1.0, vy: -1.2 });
+          dummyTexts.push({ x: 210, y: 50, text: "-" + baseDmg.toLocaleString() + " HP", color: "#ff4757", alpha: 1.0, vy: -1.2 });
           
           var colors = getElementParticleColors(element);
           for(var i=0; i<30; i++) {
@@ -1054,9 +1055,9 @@
     }
 
     var bosses = [
-      { name: "Orc Warlord", hp: 140, maxHp: 140, score: 100, defenseScore: 40, color: "#2ed573", shape: "square", weapon: "Machado Gigante", element: "fisico", reward: 15 },
-      { name: "Dragão de Magma", hp: 220, maxHp: 220, score: 160, defenseScore: 120, color: "#ff4757", shape: "polygon", weapon: "Sopro Ardente", element: "fogo", reward: 35 },
-      { name: "Avatar do Vazio", hp: 350, maxHp: 350, score: 240, defenseScore: 200, color: "#1e1e2f", shape: "circle", weapon: "Foice Dimensional", element: "trevas", reward: 70 }
+      { name: "Orc Warlord", hp: 1500, maxHp: 1500, score: 100, defenseScore: 80, color: "#2ed573", shape: "square", weapon: "Machado Gigante", element: "fisico", reward: 15 },
+      { name: "Dragão de Magma", hp: 3500, maxHp: 3500, score: 180, defenseScore: 160, color: "#ff4757", shape: "polygon", weapon: "Sopro Ardente", element: "fogo", reward: 35 },
+      { name: "Avatar do Vazio", hp: 7000, maxHp: 7000, score: 260, defenseScore: 280, color: "#1e1e2f", shape: "circle", weapon: "Foice Dimensional", element: "trevas", reward: 70 }
     ];
     var selectedBossIndex = 0;
 
@@ -1122,12 +1123,12 @@
 
     var bossCanvas = null, bossCtx = null, bossTimeout = null;
 
-    // NOVO CÁLCULO DE DANO EQUILIBRADO (Baseado em proporção de pontos e mitigação de defesa)
+    // NOVA FÓRMULA DE DANO MASSIVO E MITIGAÇÃO POR DEFESA
     function calculateMitigatedDamage(attackerPoints, defenderDefenseScore) {
-      var baseAttackPower = Math.max(8, Math.round(attackerPoints * 0.12));
-      var rawDmg = baseAttackPower + Math.floor(Math.random() * 8) + 4;
-      var defReduction = Math.min(0.75, (defenderDefenseScore || 0) / 500);
-      var finalDmg = Math.max(5, Math.round(rawDmg * (1 - defReduction)));
+      var baseAttackPower = Math.max(20, Math.round(attackerPoints * 2.2));
+      var rawDmg = baseAttackPower + Math.floor(Math.random() * 40) + 15;
+      var defReduction = Math.min(0.70, (defenderDefenseScore || 0) / 800);
+      var finalDmg = Math.max(15, Math.round(rawDmg * (1 - defReduction)));
       return finalDmg;
     }
 
@@ -1137,8 +1138,8 @@
       bossCtx = bossCanvas.getContext('2d');
 
       var heroTotalPts = hero.totalPoints + (hero.artifactBonus || 0);
-      var heroMaxHp = 50 + heroTotalPts;
-      var bossMaxHp = 60 + bossTemplate.score;
+      var heroMaxHp = 200 + (heroTotalPts * 8);
+      var bossMaxHp = bossTemplate.hp;
 
       var f1 = { homeX: 75, x: 75, baseY: 90, y: 90, shape: hero.race.shape || "rect", color: hero.race.color || "#3498db", hp: heroMaxHp, maxHp: heroMaxHp, element: hero.race.element || "fisico", scaleY: 1 };
       var f2 = { homeX: 275, x: 275, baseY: 90, y: 90, shape: bossTemplate.shape, color: bossTemplate.color, hp: bossMaxHp, maxHp: bossMaxHp, element: bossTemplate.element, scaleY: 1 };
@@ -1221,7 +1222,7 @@
       requestAnimationFrame(battleAnimLoop);
 
       setNarration("⚡ O confronto contra " + bossTemplate.name + " começou!");
-      var turn = 0, maxTurns = 20;
+      var turn = 0, maxTurns = 30;
 
       function stepAttackAnim(attacker, target, onImpact) {
         var startX = attacker.x, startY = attacker.baseY;
@@ -1263,20 +1264,20 @@
 
         stepAttackAnim(attacker, defender, function() {
           playSound('hit');
-          var dmg = isHeroTurn ? calculateMitigatedDamage(heroTotalPts, bossTemplate.defenseScore) : calculateMitigatedDamage(bossTemplate.score, 60);
+          var dmg = isHeroTurn ? calculateMitigatedDamage(heroTotalPts, bossTemplate.defenseScore) : calculateMitigatedDamage(bossTemplate.score, 120);
           defender.hp = Math.max(0, defender.hp - dmg);
           spawnParticles(defender.x, defender.y, attacker.element, 16);
-          addFloatingText(defender.x - 10, defender.y - 22, "-" + dmg, "#ff4757");
+          addFloatingText(defender.x - 10, defender.y - 22, "-" + dmg.toLocaleString(), "#ff4757");
           screenShake = 3;
 
           if (isHeroTurn) {
-            setNarration("⚔️ " + hero.name + " ataca " + bossTemplate.name + " (-" + dmg + " HP)");
+            setNarration("⚔️ " + hero.name + " ataca " + bossTemplate.name + " (-" + dmg.toLocaleString() + " HP)");
           } else {
-            setNarration("💥 " + bossTemplate.name + " contra-ataca! (-" + dmg + " HP)");
+            setNarration("💥 " + bossTemplate.name + " contra-ataca! (-" + dmg.toLocaleString() + " HP)");
           }
 
-          document.getElementById('bossP1Label').innerText = hero.name + " (HP: " + Math.round(f1.hp) + "/" + heroMaxHp + ")";
-          document.getElementById('bossP2Label').innerText = bossTemplate.name + " (HP: " + Math.round(f2.hp) + "/" + bossMaxHp + ")";
+          document.getElementById('bossP1Label').innerText = hero.name + " (HP: " + Math.round(f1.hp).toLocaleString() + "/" + heroMaxHp.toLocaleString() + ")";
+          document.getElementById('bossP2Label').innerText = bossTemplate.name + " (HP: " + Math.round(f2.hp).toLocaleString() + "/" + bossMaxHp.toLocaleString() + ")";
 
           checkEnd();
         });
@@ -1594,8 +1595,8 @@
       var myTotalPts = myFighter.totalPoints + (myFighter.artifactBonus || 0);
       var enemyTotalPts = enemyFighter.totalPoints;
 
-      var myMaxHp = 50 + myTotalPts;
-      var enemyMaxHp = 50 + enemyTotalPts;
+      var myMaxHp = 200 + (myTotalPts * 8);
+      var enemyMaxHp = 200 + (enemyTotalPts * 8);
 
       var f1 = { homeX: 75, x: 75, baseY: 90, y: 90, shape: myFighter.race.shape || "rect", color: myFighter.race.color || "#3498db", hp: myMaxHp, maxHp: myMaxHp, element: myFighter.race.element || "fisico", scaleY: 1 };
       var f2 = { homeX: 275, x: 275, baseY: 90, y: 90, shape: enemyFighter.race.shape || "triangle", color: enemyFighter.race.color || "#e74c3c", hp: enemyMaxHp, maxHp: enemyMaxHp, element: enemyFighter.race.element || "fisico", scaleY: 1 };
@@ -1678,7 +1679,7 @@
       requestAnimationFrame(battleAnimLoop);
 
       setNarration("⚡ Batalha PvP na Arena iniciada!");
-      var turn = 0, maxTurns = 24;
+      var turn = 0, maxTurns = 30;
 
       function animateJumpAttack(attacker, target, onImpact) {
         var startX = attacker.x, startY = attacker.baseY;
@@ -1734,18 +1735,18 @@
 
           defender.hp = Math.max(0, defender.hp - finalDmg);
           spawnParticles(defender.x, defender.y, attacker.element, isCrit ? 20 : 12);
-          addFloatingText(defender.x - 10, defender.y - 22, "-" + finalDmg, isCrit ? "#f1c40f" : "#ff4757");
+          addFloatingText(defender.x - 10, defender.y - 22, "-" + finalDmg.toLocaleString(), isCrit ? "#f1c40f" : "#ff4757");
 
           if (isCrit) {
-            setNarration("💥 " + speedUsed + "! " + (isF1Turn ? playerName : attackerName) + " usa [" + weaponNameUsed + "] (CRÍTICO: -" + finalDmg + ")");
+            setNarration("💥 " + speedUsed + "! " + (isF1Turn ? playerName : attackerName) + " usa [" + weaponNameUsed + "] (CRÍTICO: -" + finalDmg.toLocaleString() + ")");
           } else {
-            setNarration("⚔️ " + (isF1Turn ? playerName : attackerName) + " ataca com [" + weaponNameUsed + "] (-" + finalDmg + ")");
+            setNarration("⚔️ " + (isF1Turn ? playerName : attackerName) + " ataca com [" + weaponNameUsed + "] (-" + finalDmg.toLocaleString() + ")");
           }
 
           var p1Lbl = document.getElementById('p1Label');
           var p2Lbl = document.getElementById('p2Label');
-          if (p1Lbl) p1Lbl.innerText = playerName + " (HP: " + Math.round(f1.hp) + "/" + myMaxHp + ")";
-          if (p2Lbl) p2Lbl.innerText = enemyFighter.name + " (HP: " + Math.round(f2.hp) + "/" + enemyMaxHp + ")";
+          if (p1Lbl) p1Lbl.innerText = playerName + " (HP: " + Math.round(f1.hp).toLocaleString() + "/" + myMaxHp.toLocaleString() + ")";
+          if (p2Lbl) p2Lbl.innerText = enemyFighter.name + " (HP: " + Math.round(f2.hp).toLocaleString() + "/" + enemyMaxHp.toLocaleString() + ")";
 
           checkBattleEnd();
         });
@@ -1826,9 +1827,9 @@
       var myTotalPts = activePvpFighter.totalPoints + (activePvpFighter.artifactBonus || 0);
 
       var enemyPoints = myTotalPts;
-      if (botDifficulty === 'easy') { enemyPoints = Math.max(30, myTotalPts - 35); }
-      else if (botDifficulty === 'medium') { enemyPoints = Math.max(40, myTotalPts + (Math.floor(Math.random() * 31) - 15)); }
-      else if (botDifficulty === 'hard') { enemyPoints = myTotalPts + 60; }
+      if (botDifficulty === 'easy') { enemyPoints = Math.max(50, myTotalPts - 50); }
+      else if (botDifficulty === 'medium') { enemyPoints = Math.max(60, myTotalPts + (Math.floor(Math.random() * 61) - 30)); }
+      else if (botDifficulty === 'hard') { enemyPoints = myTotalPts + 100; }
 
       var randomRaceObj = db[Math.floor(Math.random() * db.length)];
       currentOpponent = {
