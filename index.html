@@ -14,7 +14,6 @@
   <style>
     * { box-sizing: border-box; margin: 0; padding: 0; user-select: none; font-family: 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; -webkit-tap-highlight-color: transparent; touch-action: pan-y; }
     
-    /* Scroll livre, forçado e natural em qualquer dispositivo ou iframe */
     html, body { background-color: #05070f; color: #fff; width: 100%; height: auto; min-height: 100vh; overflow-x: hidden; overflow-y: scroll !important; -webkit-overflow-scrolling: touch; }
     
     .app-container { display: flex; flex-direction: column; align-items: center; width: 100%; max-width: 420px; min-height: 100vh; height: auto; position: relative; background: #070a17; box-shadow: 0 0 40px rgba(0,0,0,0.8); margin: 0 auto; padding-bottom: 120px; overflow: visible; }
@@ -22,7 +21,7 @@
     .view-screen { display: none; flex-direction: column; width: 100%; padding: 10px; }
     .view-screen.active { display: flex !important; }
 
-    /* Tela de Início (Nome obrigatório) */
+    /* Tela de Início (Acesso Direto por Nome) */
     #tabWelcome { display: none; align-items: center; justify-content: center; min-height: 90vh; text-align: center; padding: 20px; }
     #tabWelcome.active { display: flex !important; }
 
@@ -84,13 +83,14 @@
 <body>
   <div class="app-container">
     
-    <!-- TELA 0: CADASTRO DO NOME DO JOGADOR -->
+    <!-- TELA DE ENTRADA / CARREGAMENTO DE PERFIL -->
     <div id="tabWelcome" class="view-screen active">
       <div class="welcome-card">
-        <div style="font-size: 1.3rem; font-weight: 800; color: #f1c40f; margin-bottom: 8px;">🎮 BEM-VINDO AO GACHA RPG</div>
-        <div style="font-size: 0.85rem; color: #a4b0be; margin-bottom: 12px;">Para entrar na arena e salvar os seus recordes no ranking global, digite o seu nome de herói:</div>
-        <input type="text" id="playerNameInput" class="name-input" placeholder="Ex: MestreGacha99" maxlength="18" onkeydown="if(event.key==='Enter') startGameWithName()">
-        <button class="btn" onclick="startGameWithName()" style="background: linear-gradient(180deg, #2ed573, #26af5f); box-shadow: 0 3px 0 #1b7a42;">ENTRAR NO JOGO</button>
+        <div style="font-size: 1.3rem; font-weight: 800; color: #f1c40f; margin-bottom: 8px;">🎮 SEU NOME DE HERÓI</div>
+        <div style="font-size: 0.82rem; color: #a4b0be; margin-bottom: 12px;">Digite seu nome. Se já jogou antes, seu progresso e moedas serão carregados automaticamente:</div>
+        <input type="text" id="playerNameInput" class="name-input" placeholder="Ex: MestreGacha99" maxlength="18" onkeydown="if(event.key==='Enter') loadOrCreateProfile()">
+        <button class="btn" onclick="loadOrCreateProfile()" style="background: linear-gradient(180deg, #2ed573, #26af5f); box-shadow: 0 3px 0 #1b7a42;">ENTRAR NO JOGO</button>
+        <div id="authStatus" style="font-size: 0.75rem; color: #f1c40f; margin-top: 8px; font-weight: bold;"></div>
       </div>
     </div>
 
@@ -360,10 +360,13 @@
 
   <script>
     const SUPABASE_URL = 'https://ehybehqtbaistdapxvqs.supabase.co';
-    const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImVoeWJlaHF0YmFpc3RkYXB4dnFzIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTA2ODk0MDQsImV4cCI6MjA2NjI2NTQwNH0.ExemploChaveSupabaseOuSuaChaveAnonReal';
+    const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImVhyWJlaHF0YmFpc3RkYXB4dnFzIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTA2ODk0MDQsImV4cCI6MjA2NjI2NTQwNH0.ExemploChaveSupabaseOuSuaChaveAnonReal';
     const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
     var playerName = '';
+    var totalCoins = 50;
+    var playerElo = 0;
+    var inventory = [];
 
     window.onload = function() {
       if (typeof PokiSDK !== 'undefined') {
@@ -372,18 +375,106 @@
         }).catch(() => {});
       }
       
+      var lastUser = localStorage.getItem('gachaLastHeroName');
+      if (lastUser) {
+        document.getElementById('playerNameInput').value = lastUser;
+      }
       document.getElementById('tabWelcome').classList.add('active');
     };
 
-    function startGameWithName() {
+    // SISTEMA DE CARREGAMENTO INTELIGENTE (SEM SENHA, POR NOME)
+    async function loadOrCreateProfile() {
       var inputVal = document.getElementById('playerNameInput').value.trim();
-      if (!inputVal) { alert("Por favor, digite o seu nome para continuar!"); return; }
-      playerName = inputVal;
-      localStorage.setItem('gachaPlayerName', playerName);
+      var statusEl = document.getElementById('authStatus');
 
+      if (!inputVal) {
+        statusEl.innerText = "⚠️ Digite o seu nome para entrar!";
+        return;
+      }
+
+      playerName = inputVal;
+      localStorage.setItem('gachaLastHeroName', playerName);
+      statusEl.innerText = "⏳ Conectando à nuvem...";
+
+      try {
+        // Tenta buscar o perfil na tabela 'Usuarios'
+        let { data, error } = await supabaseClient
+          .from('Usuarios')
+          .select('*')
+          .eq('nome', playerName)
+          .maybeSingle();
+
+        if (data) {
+          // Perfil encontrado na nuvem! Carrega os dados salvos
+          totalCoins = data.moedas ?? 50;
+          playerElo = data.elo ?? 0;
+          inventory = data.inventario || [];
+          statusEl.innerText = "✅ Perfil carregado com sucesso!";
+        } else {
+          // Perfil não existe, cria um novo automaticamente na nuvem
+          let newAccount = {
+            nome: playerName,
+            moedas: 50,
+            elo: 0,
+            inventario: []
+          };
+
+          let { error: insertError } = await supabaseClient
+            .from('Usuarios')
+            .insert([newAccount]);
+
+          if (insertError) {
+            console.error(insertError);
+          }
+
+          totalCoins = 50;
+          playerElo = 0;
+          inventory = [];
+          statusEl.innerText = "🎉 Novo perfil criado com sucesso!";
+        }
+
+        saveLocalSession();
+        setTimeout(enterGameScreen, 600);
+
+      } catch (err) {
+        // Modo offline de segurança
+        statusEl.innerText = "⚠️ Modo offline. Entrando com dados locais.";
+        totalCoins = parseInt(localStorage.getItem('gachaTotalCoins') || '50');
+        playerElo = parseInt(localStorage.getItem('gachaPlayerElo') || '0');
+        inventory = JSON.parse(localStorage.getItem('gachaInventory') || '[]');
+        setTimeout(enterGameScreen, 800);
+      }
+    }
+
+    function saveLocalSession() {
+      localStorage.setItem('gachaTotalCoins', totalCoins);
+      localStorage.setItem('gachaPlayerElo', playerElo);
+      localStorage.setItem('gachaInventory', JSON.stringify(inventory));
+    }
+
+    async function syncCloudProgress() {
+      if (!playerName) return;
+      try {
+        await supabaseClient
+          .from('Usuarios')
+          .upsert({
+            nome: playerName,
+            moedas: totalCoins,
+            elo: playerElo,
+            inventario: inventory
+          });
+      } catch (e) {
+        console.error("Erro ao sincronizar progresso:", e);
+      }
+    }
+
+    function enterGameScreen() {
       document.getElementById('tabWelcome').classList.remove('active');
       document.getElementById('tabRoleta').classList.add('active');
       document.getElementById('footerNav').style.display = 'flex';
+      
+      coinBalance.innerText = totalCoins;
+      document.getElementById('playerElo').innerText = playerElo;
       
       drawWheel(0);
       initAutoSpinUI();
@@ -393,10 +484,9 @@
     async function salvarNoSupabase(nomeHeroi, pontuacao, racaHeroi) {
       try {
         const fullIdentifierName = playerName + " (" + nomeHeroi + ")";
-        const { error } = await supabaseClient
+        await supabaseClient
           .from('Ranking')
           .insert([{ nome: fullIdentifierName, pontuacao: pontuacao, raca: racaHeroi }]);
-        if (error) console.error("Erro ao salvar no Supabase:", error.message);
       } catch(e) {}
     }
 
@@ -551,8 +641,6 @@
     var isSpinning = false;
     var currentAngle = 0;
     var totalPoints = 0;
-    var totalCoins = parseInt(localStorage.getItem('gachaTotalCoins') || '50');
-    coinBalance.innerText = totalCoins;
 
     var charData = { name: "-", race: null, height: "-", speed: "-", strength: "-", defense: "-", skill: "-", skillObj: null, artifact: null, artifactBonus: 0 };
     var tempSkillCategory = null;
@@ -565,10 +653,8 @@
     var hasUnlockedAuto = localStorage.getItem('gachaHasUnlockedAuto') === 'true';
     var isAutoSpinning = false;
 
-    var inventory = JSON.parse(localStorage.getItem('gachaInventory') || '[]');
     var leaderboard = JSON.parse(localStorage.getItem('gachaLeaderboard') || '[]');
     var coinLeaderboard = JSON.parse(localStorage.getItem('gachaCoinLeaderboard') || '[]');
-    var playerElo = parseInt(localStorage.getItem('gachaPlayerElo') || '0');
     var currentOpponent = null;
     var activePvpFighter = null;
     var searchTimerInterval = null;
@@ -579,10 +665,8 @@
     var pvpEnergy = parseInt(localStorage.getItem('gachaPvpEnergy') ?? '10');
     var lastEnergyTime = parseInt(localStorage.getItem('gachaLastEnergyTime') || Date.now());
 
-    document.getElementById('playerElo').innerText = playerElo;
-
     function saveCoins() {
-      localStorage.setItem('gachaTotalCoins', totalCoins);
+      syncCloudProgress();
       checkCoinLeaderboard(totalCoins);
     }
 
@@ -808,7 +892,7 @@
       } else if (val === 'crown') {
         f.artifact = { id: 'crown', name: 'Coroa Divina' }; f.artifactBonus = 70;
       }
-      localStorage.setItem('gachaInventory', JSON.stringify(inventory));
+      syncCloudProgress();
       openFighterDetails(selectedFighterIndex);
       updateInventoryUI();
     }
@@ -1438,7 +1522,7 @@
       };
       
       inventory.push(fighterData);
-      localStorage.setItem('gachaInventory', JSON.stringify(inventory));
+      syncCloudProgress();
       updateInventoryUI();
 
       var newEntry = { name: playerName + " (" + charData.name + ")", score: totalPoints, race: charData.race.name, skill: charData.skill };
@@ -1450,7 +1534,7 @@
 
       salvarNoSupabase(charData.name, totalPoints, charData.race.name);
 
-      alert("💾 Personagem guardado no inventário e enviado para o Supabase!");
+      alert("💾 Personagem guardado e progresso salvo na nuvem!");
       resetGameForNewCharacter();
     }
 
@@ -1471,7 +1555,7 @@
       charData = { name: "-", race: null, height: "-", speed: "-", strength: "-", defense: "-", skill: "-", skillObj: null, artifact: null, artifactBonus: 0 };
       tempSkillCategory = null;
       cardRace.innerText = "Pronto para Criar";
-      cardName.innerHTML = "👤 Nome: <span>-</span>";
+      cardName.innerHTML = "👤 Nome: <span>" + playerName + "</span>";
       cardHeight.innerHTML = "📏 Altura: <span>-</span>";
       cardSpeed.innerHTML = "⚡ Velocidade: <span>-</span>";
       cardStrength.innerHTML = "🏋️ Força: <span>-</span>";
@@ -1763,6 +1847,7 @@
         playerElo = Math.max(0, playerElo + finalEloChange);
         localStorage.setItem('gachaPlayerElo', playerElo);
         document.getElementById('playerElo').innerText = playerElo;
+        syncCloudProgress();
 
         setTimeout(function() {
           document.getElementById('pvpBattleScreen').style.display = "none";
@@ -1850,7 +1935,7 @@
           } else if (step === 'DEFENSE') {
             charData.defense = item.label; totalPoints += item.score;
             cardDefense.innerHTML = "🛡️ Resistência: <span>" + item.label + " (+" + item.score + " pts)</span>";
-          } else if (step === 'SKILL_CATEGORY') {
+          } else if (testStep = 'SKILL_CATEGORY') {
             tempSkillCategory = item;
             if (item.category === "Sem Habilidade") {
               charData.skill = "Nenhuma"; charData.skillObj = item.skills[0];
@@ -1858,7 +1943,7 @@
             }
           } else if (step === 'SKILL_SELECT') {
             charData.skill = item.label; charData.skillObj = item; totalPoints += item.score;
-            cardSkill.innerHTML = "✨ Habilidade: <span style='color:#ffd32a'>" + item.label + " (+" + item.score + " pts)</span>";
+            cardSkill.htmlStyle = "✨ Habilidade: <span style='color:#ffd32a'>" + item.label + " (+" + item.score + " pts)</span>";
           }
 
           cardTotal.innerHTML = "🏆 Poder Total: <span style='color:#00d2d3'>" + totalPoints + " pts</span>";
