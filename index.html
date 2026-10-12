@@ -21,7 +21,7 @@
     .view-screen { display: none; flex-direction: column; width: 100%; padding: 10px; }
     .view-screen.active { display: flex !important; }
 
-    /* Tela de Início (Acesso Direto por Nome) */
+    /* Tela de Início (Acesso por Nome) */
     #tabWelcome { display: none; align-items: center; justify-content: center; min-height: 90vh; text-align: center; padding: 20px; }
     #tabWelcome.active { display: flex !important; }
 
@@ -382,7 +382,6 @@
       document.getElementById('tabWelcome').classList.add('active');
     };
 
-    // SISTEMA DE CARREGAMENTO INTELIGENTE (SEM SENHA, POR NOME)
     async function loadOrCreateProfile() {
       var inputVal = document.getElementById('playerNameInput').value.trim();
       var statusEl = document.getElementById('authStatus');
@@ -397,7 +396,6 @@
       statusEl.innerText = "⏳ Conectando à nuvem...";
 
       try {
-        // Tenta buscar o perfil na tabela 'Usuarios'
         let { data, error } = await supabaseClient
           .from('Usuarios')
           .select('*')
@@ -405,13 +403,11 @@
           .maybeSingle();
 
         if (data) {
-          // Perfil encontrado na nuvem! Carrega os dados salvos
           totalCoins = data.moedas ?? 50;
           playerElo = data.elo ?? 0;
           inventory = data.inventario || [];
           statusEl.innerText = "✅ Perfil carregado com sucesso!";
         } else {
-          // Perfil não existe, cria um novo automaticamente na nuvem
           let newAccount = {
             nome: playerName,
             moedas: 50,
@@ -437,7 +433,6 @@
         setTimeout(enterGameScreen, 600);
 
       } catch (err) {
-        // Modo offline de segurança
         statusEl.innerText = "⚠️ Modo offline. Entrando com dados locais.";
         totalCoins = parseInt(localStorage.getItem('gachaTotalCoins') || '50');
         playerElo = parseInt(localStorage.getItem('gachaPlayerElo') || '0');
@@ -864,10 +859,12 @@
       document.getElementById('artifactSelect').value = f.artifact ? f.artifact.id : 'none';
 
       var totalWithArt = f.totalPoints + (f.artifactBonus || 0);
+      var calculatedHp = 50 + totalWithArt;
       body.innerHTML = 
         '<div><b>👤 Nome:</b> ' + f.name + '</div>' +
         '<div><b>🛡️ Raça:</b> ' + f.race.name + '</div>' +
         '<div><b>⚔️ Arma na Mão:</b> <span style="color:#f1c40f">' + (f.race.weapon || 'Arma Padrão') + '</span></div>' +
+        '<div><b>❤️ Vida Total (HP):</b> <span style="color:#2ed573">' + calculatedHp + ' HP</span></div>' +
         '<div><b>⚡ Velocidade:</b> ' + f.speed + '</div>' +
         '<div><b>🏋️ Força:</b> ' + f.strength + '</div>' +
         '<div><b>🛡️ Resistência:</b> ' + f.defense + '</div>' +
@@ -1004,7 +1001,8 @@
         } else {
           playSound('crit');
           var totalPts = f.totalPoints + (f.artifactBonus || 0);
-          var baseDmg = Math.round(totalPts * 0.12) + Math.floor(Math.random() * 8) + 6;
+          // Novo cálculo de dano balanceado proporcional
+          var baseDmg = Math.round(totalPts * 0.15) + Math.floor(Math.random() * 5) + 5;
           
           dummyTexts.push({ x: 210, y: 50, text: "-" + baseDmg + " HP", color: "#ff4757", alpha: 1.0, vy: -1.2 });
           
@@ -1056,9 +1054,9 @@
     }
 
     var bosses = [
-      { name: "Orc Warlord", hp: 120, maxHp: 120, score: 120, defenseScore: 40, color: "#2ed573", shape: "square", weapon: "Machado Gigante", element: "fisico", reward: 15 },
-      { name: "Dragão de Magma", hp: 200, maxHp: 200, score: 200, defenseScore: 120, color: "#ff4757", shape: "polygon", weapon: "Sopro Ardente", element: "fogo", reward: 35 },
-      { name: "Avatar do Vazio", hp: 320, maxHp: 320, score: 320, defenseScore: 250, color: "#1e1e2f", shape: "circle", weapon: "Foice Dimensional", element: "trevas", reward: 70 }
+      { name: "Orc Warlord", hp: 140, maxHp: 140, score: 100, defenseScore: 40, color: "#2ed573", shape: "square", weapon: "Machado Gigante", element: "fisico", reward: 15 },
+      { name: "Dragão de Magma", hp: 220, maxHp: 220, score: 160, defenseScore: 120, color: "#ff4757", shape: "polygon", weapon: "Sopro Ardente", element: "fogo", reward: 35 },
+      { name: "Avatar do Vazio", hp: 350, maxHp: 350, score: 240, defenseScore: 200, color: "#1e1e2f", shape: "circle", weapon: "Foice Dimensional", element: "trevas", reward: 70 }
     ];
     var selectedBossIndex = 0;
 
@@ -1124,10 +1122,12 @@
 
     var bossCanvas = null, bossCtx = null, bossTimeout = null;
 
+    // NOVO CÁLCULO DE DANO EQUILIBRADO (Baseado em proporção de pontos e mitigação de defesa)
     function calculateMitigatedDamage(attackerPoints, defenderDefenseScore) {
-      var rawDmg = Math.round(attackerPoints * 0.18) + Math.floor(Math.random() * 12) + 10;
-      var defFactor = Math.min(0.88, (defenderDefenseScore || 0) / 450);
-      var finalDmg = Math.max(15, Math.round(rawDmg * (1 - defFactor)));
+      var baseAttackPower = Math.max(8, Math.round(attackerPoints * 0.12));
+      var rawDmg = baseAttackPower + Math.floor(Math.random() * 8) + 4;
+      var defReduction = Math.min(0.75, (defenderDefenseScore || 0) / 500);
+      var finalDmg = Math.max(5, Math.round(rawDmg * (1 - defReduction)));
       return finalDmg;
     }
 
@@ -1137,10 +1137,11 @@
       bossCtx = bossCanvas.getContext('2d');
 
       var heroTotalPts = hero.totalPoints + (hero.artifactBonus || 0);
-      var heroDefense = 80;
+      var heroMaxHp = 50 + heroTotalPts;
+      var bossMaxHp = 60 + bossTemplate.score;
 
-      var f1 = { homeX: 75, x: 75, baseY: 90, y: 90, shape: hero.race.shape || "rect", color: hero.race.color || "#3498db", hp: 100, maxHp: 100, element: hero.race.element || "fisico", scaleY: 1 };
-      var f2 = { homeX: 275, x: 275, baseY: 90, y: 90, shape: bossTemplate.shape, color: bossTemplate.color, hp: bossTemplate.hp, maxHp: bossTemplate.maxHp, element: bossTemplate.element, scaleY: 1 };
+      var f1 = { homeX: 75, x: 75, baseY: 90, y: 90, shape: hero.race.shape || "rect", color: hero.race.color || "#3498db", hp: heroMaxHp, maxHp: heroMaxHp, element: hero.race.element || "fisico", scaleY: 1 };
+      var f2 = { homeX: 275, x: 275, baseY: 90, y: 90, shape: bossTemplate.shape, color: bossTemplate.color, hp: bossMaxHp, maxHp: bossMaxHp, element: bossTemplate.element, scaleY: 1 };
 
       var particles = [], floatTexts = [], screenShake = 0;
       var isBattleRunning = true;
@@ -1220,7 +1221,7 @@
       requestAnimationFrame(battleAnimLoop);
 
       setNarration("⚡ O confronto contra " + bossTemplate.name + " começou!");
-      var turn = 0, maxTurns = 12;
+      var turn = 0, maxTurns = 20;
 
       function stepAttackAnim(attacker, target, onImpact) {
         var startX = attacker.x, startY = attacker.baseY;
@@ -1262,11 +1263,11 @@
 
         stepAttackAnim(attacker, defender, function() {
           playSound('hit');
-          var dmg = isHeroTurn ? calculateMitigatedDamage(heroTotalPts, bossTemplate.defenseScore) : calculateMitigatedDamage(bossTemplate.score, heroDefense);
+          var dmg = isHeroTurn ? calculateMitigatedDamage(heroTotalPts, bossTemplate.defenseScore) : calculateMitigatedDamage(bossTemplate.score, 60);
           defender.hp = Math.max(0, defender.hp - dmg);
-          spawnParticles(defender.x, defender.y, attacker.element, 20);
+          spawnParticles(defender.x, defender.y, attacker.element, 16);
           addFloatingText(defender.x - 10, defender.y - 22, "-" + dmg, "#ff4757");
-          screenShake = 4;
+          screenShake = 3;
 
           if (isHeroTurn) {
             setNarration("⚔️ " + hero.name + " ataca " + bossTemplate.name + " (-" + dmg + " HP)");
@@ -1274,8 +1275,8 @@
             setNarration("💥 " + bossTemplate.name + " contra-ataca! (-" + dmg + " HP)");
           }
 
-          document.getElementById('bossP1Label').innerText = hero.name + " (HP: " + Math.round(f1.hp) + ")";
-          document.getElementById('bossP2Label').innerText = bossTemplate.name + " (HP: " + Math.round(f2.hp) + ")";
+          document.getElementById('bossP1Label').innerText = hero.name + " (HP: " + Math.round(f1.hp) + "/" + heroMaxHp + ")";
+          document.getElementById('bossP2Label').innerText = bossTemplate.name + " (HP: " + Math.round(f2.hp) + "/" + bossMaxHp + ")";
 
           checkEnd();
         });
@@ -1287,7 +1288,7 @@
           isBattleRunning = false;
           bossTimeout = setTimeout(function() { cb(win); }, 1000);
         } else {
-          bossTimeout = setTimeout(bossLoop, 1400);
+          bossTimeout = setTimeout(bossLoop, 1200);
         }
       }
 
@@ -1593,8 +1594,11 @@
       var myTotalPts = myFighter.totalPoints + (myFighter.artifactBonus || 0);
       var enemyTotalPts = enemyFighter.totalPoints;
 
-      var f1 = { homeX: 75, x: 75, baseY: 90, y: 90, shape: myFighter.race.shape || "rect", color: myFighter.race.color || "#3498db", hp: 100, maxHp: 100, element: myFighter.race.element || "fisico", scaleY: 1 };
-      var f2 = { homeX: 275, x: 275, baseY: 90, y: 90, shape: enemyFighter.race.shape || "triangle", color: enemyFighter.race.color || "#e74c3c", hp: 100, maxHp: 100, element: enemyFighter.race.element || "fisico", scaleY: 1 };
+      var myMaxHp = 50 + myTotalPts;
+      var enemyMaxHp = 50 + enemyTotalPts;
+
+      var f1 = { homeX: 75, x: 75, baseY: 90, y: 90, shape: myFighter.race.shape || "rect", color: myFighter.race.color || "#3498db", hp: myMaxHp, maxHp: myMaxHp, element: myFighter.race.element || "fisico", scaleY: 1 };
+      var f2 = { homeX: 275, x: 275, baseY: 90, y: 90, shape: enemyFighter.race.shape || "triangle", color: enemyFighter.race.color || "#e74c3c", hp: enemyMaxHp, maxHp: enemyMaxHp, element: enemyFighter.race.element || "fisico", scaleY: 1 };
 
       var particles = [], floatTexts = [], screenShake = 0;
       var isBattleRunning = true;
@@ -1674,7 +1678,7 @@
       requestAnimationFrame(battleAnimLoop);
 
       setNarration("⚡ Batalha PvP na Arena iniciada!");
-      var turn = 0, maxTurns = 10;
+      var turn = 0, maxTurns = 24;
 
       function animateJumpAttack(attacker, target, onImpact) {
         var startX = attacker.x, startY = attacker.baseY;
@@ -1723,13 +1727,13 @@
           var atkPts = isF1Turn ? myTotalPts : enemyTotalPts;
           var defPts = isF1Turn ? enemyTotalPts : myTotalPts;
           
-          var baseDmg = calculateMitigatedDamage(atkPts, defPts * 0.4);
+          var baseDmg = calculateMitigatedDamage(atkPts, defPts);
           var isCrit = (Math.random() < 0.15);
           var finalDmg = isCrit ? Math.round(baseDmg * 1.35) : baseDmg;
-          screenShake = isCrit ? 5 : 2.5;
+          screenShake = isCrit ? 4 : 2;
 
           defender.hp = Math.max(0, defender.hp - finalDmg);
-          spawnParticles(defender.x, defender.y, attacker.element, isCrit ? 22 : 14);
+          spawnParticles(defender.x, defender.y, attacker.element, isCrit ? 20 : 12);
           addFloatingText(defender.x - 10, defender.y - 22, "-" + finalDmg, isCrit ? "#f1c40f" : "#ff4757");
 
           if (isCrit) {
@@ -1740,8 +1744,8 @@
 
           var p1Lbl = document.getElementById('p1Label');
           var p2Lbl = document.getElementById('p2Label');
-          if (p1Lbl) p1Lbl.innerText = playerName + " (HP: " + Math.round(f1.hp) + ")";
-          if (p2Lbl) p2Lbl.innerText = enemyFighter.name + " (HP: " + Math.round(f2.hp) + ")";
+          if (p1Lbl) p1Lbl.innerText = playerName + " (HP: " + Math.round(f1.hp) + "/" + myMaxHp + ")";
+          if (p2Lbl) p2Lbl.innerText = enemyFighter.name + " (HP: " + Math.round(f2.hp) + "/" + enemyMaxHp + ")";
 
           checkBattleEnd();
         });
@@ -1763,7 +1767,7 @@
               pvpActiveTimeout = setTimeout(function() { outcomeCallback(false); }, 1200);
             }
           }, 800);
-        } else { pvpActiveTimeout = setTimeout(battleLoop, 1400); }
+        } else { pvpActiveTimeout = setTimeout(battleLoop, 1200); }
       }
 
       pvpActiveTimeout = setTimeout(battleLoop, 600);
@@ -1935,7 +1939,7 @@
           } else if (step === 'DEFENSE') {
             charData.defense = item.label; totalPoints += item.score;
             cardDefense.innerHTML = "🛡️ Resistência: <span>" + item.label + " (+" + item.score + " pts)</span>";
-          } else if (testStep = 'SKILL_CATEGORY') {
+          } else if (step === 'SKILL_CATEGORY') {
             tempSkillCategory = item;
             if (item.category === "Sem Habilidade") {
               charData.skill = "Nenhuma"; charData.skillObj = item.skills[0];
@@ -1943,7 +1947,7 @@
             }
           } else if (step === 'SKILL_SELECT') {
             charData.skill = item.label; charData.skillObj = item; totalPoints += item.score;
-            cardSkill.htmlStyle = "✨ Habilidade: <span style='color:#ffd32a'>" + item.label + " (+" + item.score + " pts)</span>";
+            cardSkill.innerHTML = "✨ Habilidade: <span style='color:#ffd32a'>" + item.label + " (+" + item.score + " pts)</span>";
           }
 
           cardTotal.innerHTML = "🏆 Poder Total: <span style='color:#00d2d3'>" + totalPoints + " pts</span>";
