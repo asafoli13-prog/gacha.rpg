@@ -3,110 +3,1885 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-  <title>Roleta Gacha Animada - Poki Style</title>
+  <title>Gacha RPG Mobile - Sistema de Anúncios e Sorte Normal</title>
+  
+  <!-- Script do Supabase v2 -->
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+
   <style>
-    * {
-      box-sizing: border-box;
-      margin: 0;
-      padding: 0;
-      user-select: none;
-      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    * { box-sizing: border-box; margin: 0; padding: 0; user-select: none; font-family: 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; -webkit-tap-highlight-color: transparent; }
+    body { background-color: #05070f; color: #fff; display: flex; flex-direction: column; align-items: center; justify-content: flex-start; min-height: 100vh; overflow: hidden; }
+    .app-container { display: flex; flex-direction: column; align-items: center; width: 100%; max-width: 420px; height: 100vh; max-height: 890px; position: relative; background: #070a17; box-shadow: 0 0 40px rgba(0,0,0,0.8); }
+    
+    .view-screen { display: none; flex-direction: column; width: 100%; flex: 1; overflow-y: auto; padding: 10px; padding-bottom: 80px; scroll-behavior: smooth; }
+    .view-screen.active { display: flex; }
+
+    .control-panel { background: #111528; border: 1px solid rgba(255,255,255,0.08); border-radius: 20px; padding: 14px; width: 100%; text-align: center; box-shadow: 0 12px 35px rgba(0,0,0,0.6); margin-bottom: 10px; backdrop-filter: blur(10px); }
+    .step-title { font-size: 0.95rem; color: #f1c40f; margin-bottom: 8px; text-transform: uppercase; font-weight: 800; letter-spacing: 1.2px; text-shadow: 0 2px 4px rgba(0,0,0,0.5); }
+
+    .speed-bar { display: flex; gap: 6px; margin-bottom: 10px; }
+    .btn-speed { flex: 1; padding: 8px; font-size: 0.78rem; font-weight: 700; border-radius: 10px; cursor: pointer; border: none; background: #1a223f; color: #a4b0be; box-shadow: 0 4px 10px rgba(0,0,0,0.3); transition: all 0.2s ease; }
+    .btn-speed.active { background: #3498db !important; color: #fff !important; box-shadow: 0 4px 16px rgba(52, 152, 219, 0.5) !important; transform: translateY(-1px); }
+
+    .character-card { background: #0b0e1b; border: 1px solid rgba(255,71,87,0.35); border-radius: 14px; padding: 12px; margin-bottom: 10px; text-align: left; display: flex; flex-direction: column; gap: 5px; box-shadow: inset 0 0 15px rgba(0,0,0,0.7); }
+    .stat-line { font-size: 0.82rem; color: #dcdde1; }
+    .stat-line span { color: #f1c40f; font-weight: 700; }
+    .race-header { font-size: 1.15rem; font-weight: 800; color: #ff4757; text-align: center; border-bottom: 1px solid rgba(255,255,255,0.08); padding-bottom: 5px; margin-bottom: 5px; text-shadow: 0 2px 6px rgba(255,71,87,0.3); }
+    .total-score { font-size: 0.95rem; color: #00d2d3; text-align: center; border-top: 1px dashed rgba(255,255,255,0.12); padding-top: 6px; margin-top: 3px; font-weight: 800; }
+    
+    .currency-badge { display: inline-flex; align-items: center; justify-content: center; background: linear-gradient(135deg, #2b260d, #1a1708); border: 2px solid #f1c40f; border-radius: 20px; padding: 5px 14px; margin-top: 6px; box-shadow: 0 4px 12px rgba(241, 196, 15, 0.25); gap: 6px; }
+    .currency-icon { font-size: 1rem; filter: drop-shadow(0 2px 4px rgba(0,0,0,0.5)); }
+    .currency-text { font-size: 0.9rem; font-weight: 800; color: #f1c40f; }
+
+    .spin-shop { display: flex; flex-direction: column; gap: 5px; margin-bottom: 8px; }
+    .shop-title { font-size: 0.78rem; color: #f1c40f; text-align: center; font-weight: 700; }
+    .shop-row { display: flex; gap: 5px; }
+    .btn-mode { flex: 1; padding: 8px; font-size: 0.75rem; background: #161c33; border: 1px solid rgba(255,255,255,0.06); color: #8c98a9; border-radius: 10px; cursor: pointer; font-weight: 600; transition: all 0.2s; }
+    .btn-mode.selected { border-color: #f1c40f !important; background: #342a0b !important; color: #ffd32a !important; font-weight: 800; box-shadow: 0 2px 12px rgba(241, 196, 15, 0.25); }
+
+    .auto-spin-box { background: #0b0e1b; border: 1px dashed #8e44ad; border-radius: 12px; padding: 8px; margin-bottom: 10px; text-align: center; }
+    .auto-spin-title { font-size: 0.78rem; color: #a29bfe; font-weight: 800; margin-bottom: 5px; }
+    .auto-select { width: 100%; padding: 6px; background: #111528; color: #fff; border: 1px solid #8e44ad; border-radius: 8px; font-size: 0.78rem; margin-bottom: 5px; outline: none; }
+
+    .wheel-wrapper { position: relative; width: 230px; height: 230px; margin: 6px auto; display: flex; justify-content: center; align-items: center; }
+    canvas { display: block; margin: 0 auto; background-color: #111528; border-radius: 50%; border: 4px solid #ff4757; box-shadow: 0 0 25px rgba(255, 71, 87, 0.45); }
+    .pointer { position: absolute; top: -8px; left: 50%; transform: translateX(-50%); width: 0; height: 0; border-left: 12px solid transparent; border-right: 12px solid transparent; border-top: 22px solid #f1c40f; z-index: 10; filter: drop-shadow(0 3px 6px rgba(0,0,0,0.6)); }
+
+    .btn { width: 100%; padding: 12px; font-size: 0.9rem; font-weight: 800; color: #fff; background: linear-gradient(180deg, #ff5e62, #ff4757); border: none; border-radius: 12px; cursor: pointer; text-transform: uppercase; box-shadow: 0 4px 0 #d63031, 0 6px 14px rgba(0,0,0,0.4); margin-top: 5px; transition: transform 0.1s, box-shadow 0.1s; letter-spacing: 0.5px; }
+    .btn:active { transform: translateY(2px); box-shadow: 0 2px 0 #d63031, 0 3px 6px rgba(0,0,0,0.4); }
+    .btn:disabled { background: #4b6584; box-shadow: none; cursor: not-allowed; opacity: 0.6; }
+    .btn-reroll { background: linear-gradient(180deg, #ff9f43, #ee5253); box-shadow: 0 4px 0 #c8d6e5; margin-top: 5px; display: none; }
+    
+    .epic-arena-box { background: #0b0e1b; border: 1px solid rgba(231, 76, 60, 0.4); border-radius: 12px; padding: 8px; margin-bottom: 8px; text-align: center; }
+    #epicCanvas, #bossCanvas { background: #111528; border: 1px solid rgba(255,255,255,0.08); border-radius: 10px; display: block; margin: 5px auto; width: 100%; max-width: 350px; height: 160px; }
+    .hp-container { display: flex; justify-content: space-between; font-size: 0.78rem; margin-bottom: 3px; padding: 0 4px; font-weight: 800; }
+    .narration-box { background: #05070f; border: 1px solid #f1c40f; border-radius: 8px; padding: 6px; font-size: 0.78rem; color: #f1c40f; min-height: 38px; display: flex; align-items: center; justify-content: center; text-align: center; margin-top: 5px; font-weight: 700; line-height: 1.25; box-shadow: inset 0 0 10px rgba(0,0,0,0.5); }
+
+    .footer-nav { position: absolute; bottom: 0; left: 0; width: 100%; display: flex; background: #111528; border-top: 1px solid rgba(255,255,255,0.08); padding: 8px 2px; justify-content: space-around; z-index: 50; border-radius: 20px 20px 0 0; backdrop-filter: blur(12px); box-shadow: 0 -5px 25px rgba(0,0,0,0.5); }
+    .nav-btn { flex: 1; background: transparent; border: none; color: #7f8c8d; font-size: 0.7rem; font-weight: 800; display: flex; flex-direction: column; align-items: center; gap: 2px; cursor: pointer; padding: 2px; transition: color 0.2s, transform 0.2s; }
+    .nav-btn.active { color: #f1c40f; transform: translateY(-2px); }
+
+    .modal-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(5,7,15,0.85); display: none; align-items: center; justify-content: center; z-index: 100; padding: 12px; backdrop-filter: blur(6px); }
+    .modal-content { background: #111528; border: 1px solid #f1c40f; border-radius: 18px; padding: 14px; width: 100%; max-width: 340px; text-align: left; max-height: 90vh; overflow-y: auto; box-shadow: 0 15px 40px rgba(0,0,0,0.8); }
+
+    .dummy-arena-box { background: #0b0e1b; border: 1px solid #3498db; border-radius: 10px; padding: 6px; margin-top: 6px; text-align: center; }
+    #dummyCanvas { background: #05070f; border: 1px solid rgba(255,255,255,0.08); border-radius: 8px; display: block; margin: 3px auto; width: 100%; max-width: 300px; height: 130px; }
+  </style>
+</head>
+<body>
+  <div class="app-container">
+    
+    <!-- TELA 1: ROLETA & GACHA -->
+    <div id="tabRoleta" class="view-screen active">
+      <div class="control-panel">
+        <div class="step-title" id="stepTitle">Sorteio de Raça</div>
+
+        <div class="speed-bar">
+          <button class="btn-speed active" id="speedFastBtn" onclick="setSpeed('fast')">⚡ Giro Rápido</button>
+          <button class="btn-speed" id="speedSlowBtn" onclick="setSpeed('slow')">🐢 Giro Lento</button>
+        </div>
+
+        <div style="background: #0b0e1b; border: 1px solid rgba(255,255,255,0.05); border-radius: 8px; padding: 6px; margin-bottom: 6px; display: flex; justify-content: space-between; font-size: 0.78rem;">
+          <div>⚡ Energia PvP: <b id="pvpEnergy" style="color: #f1c40f;">10/10</b></div>
+          <div>⏱️ Reg.: <b id="energyTimer" style="color: #00d2d3;">Cheia</b></div>
+        </div>
+
+        <!-- BOTÃO DE ANÚNCIO RECOMPENSADO -->
+        <button class="btn" onclick="watchRewardedAd()" style="background: linear-gradient(180deg, #3498db, #2980b9); box-shadow: 0 3px 0 #1c5980; font-size: 0.8rem; padding: 8px; margin-bottom: 6px;">
+          📺 VER ANÚNCIO (+10 🪙 e +1 ⚡)
+        </button>
+
+        <div style="background: #0b0e1b; border: 1px solid rgba(241,196,15,0.3); border-radius: 8px; padding: 5px; margin-bottom: 6px; text-align: center; font-size: 0.72rem; color: #f1c40f;">
+          🏭 Renda Ativa: <span id="passiveIncomeRate">0</span> 🪙/30s (<span id="activeFightersCount">0</span>/10 lutadores)
+        </div>
+
+        <div class="character-card" id="characterCard">
+          <div class="race-header" id="cardRace">Pronto para Criar</div>
+          <div class="stat-line" id="cardName" style="color:#00d2d3; font-weight:bold;">👤 Nome: <span>-</span></div>
+          <div class="stat-line" id="cardHeight">📏 Altura: <span>-</span></div>
+          <div class="stat-line" id="cardSpeed">⚡ Velocidade: <span>-</span></div>
+          <div class="stat-line" id="cardStrength">🏋️ Força: <span>-</span></div>
+          <div class="stat-line" id="cardDefense">🛡️ Resistência: <span>-</span></div>
+          <div class="stat-line" id="cardSkill" style="color: #ff9ff3;">✨ Habilidade: <span>-</span></div>
+          <div class="total-score" id="cardTotal">🏆 Poder Total: <span>0 pts</span></div>
+          
+          <div style="text-align: center;">
+            <div class="currency-badge">
+              <span class="currency-icon">🪙</span>
+              <span class="currency-text" id="coinBalance">0</span>
+            </div>
+          </div>
+        </div>
+
+        <div class="auto-spin-box">
+          <div id="autoBuyContainer">
+            <button class="btn" onclick="buyAutoSpin()" style="background: linear-gradient(180deg, #9b59b6, #8e44ad); box-shadow: 0 3px 0 #6c5ce7; font-size: 0.8rem; padding: 8px;">
+              🔓 AUTO-GIRO INFINITO (300🪙)
+            </button>
+          </div>
+          <div id="autoControlsContainer" style="display: none;">
+            <div class="auto-spin-title">🤖 SISTEMA DE AUTO-GIRO</div>
+            <label style="font-size: 0.72rem; color: #a4b0be; display: block; margin-bottom: 3px;">Parar ao conseguir raça mínima:</label>
+            <select id="autoTargetSelect" class="auto-select">
+              <option value="100">Monstro / Kitsune (100 pts)</option>
+              <option value="120">Demônio / Anjo / Necromante (120 pts)</option>
+              <option value="140">Dragão / Fênix / Kraken (140 pts)</option>
+              <option value="160">Titã / Arcanjo / Ceifador (160 pts)</option>
+              <option value="200">Raridades Supremas (200+ pts)</option>
+              <option value="250">Deus do Vazio / Imperador (250+ pts)</option>
+            </select>
+            <button class="btn" id="autoSpinToggleBtn" onclick="toggleAutoSpin()" style="background: linear-gradient(180deg, #2ed573, #26af5f); box-shadow: 0 3px 0 #1b7a42; font-size: 0.8rem; padding: 8px;">
+              ▶️ INICIAR AUTO-GIRO
+            </button>
+          </div>
+        </div>
+
+        <div class="spin-shop">
+          <div class="shop-title">ESCOLHA O TIPO DE GIRO (Dura apenas 1 Giro):</div>
+          <div class="shop-row">
+            <button class="btn-mode selected" id="modeNormal" onclick="setSpinMode('normal', 0)">Normal (Grátis)</button>
+            <button class="btn-mode" id="modeBom" onclick="setSpinMode('bom', 50)">Bom (50🪙)</button>
+          </div>
+          <div class="shop-row">
+            <button class="btn-mode" id="modeOtimo" onclick="setSpinMode('otimo', 120)">Ótimo 5x (120🪙)</button>
+            <button class="btn-mode" id="modeSecreto" onclick="setSpinMode('secreto', 250)">Secreto 10x (250🪙)</button>
+          </div>
+        </div>
+
+        <div class="wheel-wrapper">
+          <div class="pointer"></div>
+          <canvas id="wheelCanvas" width="230" height="230"></canvas>
+        </div>
+
+        <button class="btn btn-reroll" id="rerollBtn" onclick="triggerReroll()">🔄 REINICIAR GIRO DA RAÇA</button>
+        
+        <div id="doneActions" style="display: none; flex-direction: column; gap: 5px; width: 100%; margin-top: 4px;">
+          <button class="btn" onclick="actionSaveCharacter()" style="background: linear-gradient(180deg, #2ed573, #26af5f); box-shadow: 0 3px 0 #1b7a42;">💾 GUARDAR NO INVENTÁRIO</button>
+          <button class="btn" onclick="actionSellCharacter()" style="background: linear-gradient(180deg, #f1c40f, #e67e22); box-shadow: 0 3px 0 #d35400;">🪙 VENDER POR MOEDAS</button>
+        </div>
+
+        <button class="btn" id="spinBtn" onclick="runNextStep()">GIRAR ROLETA</button>
+        <button class="btn" onclick="resetGameForNewCharacter()" style="background: linear-gradient(180deg, #e74c3c, #c0392b); box-shadow: 0 3px 0 #922b21; margin-top: 5px; padding: 8px; font-size: 0.85rem;">🔄 REINICIAR RAÇA (DO ZERO)</button>
+      </div>
+    </div>
+
+    <!-- TELA 2: INVENTÁRIO & ARTEFATOS -->
+    <div id="tabInventario" class="view-screen">
+      <div class="control-panel" style="margin-bottom:0;">
+        <div class="step-title">🎒 INVENTÁRIO & ARTEFATOS</div>
+        <div style="font-size: 0.78rem; color: #a4b0be; margin-bottom: 8px;">Toque num herói para testar no Dummy, equipar relíquias e simular combate.</div>
+        <div id="inventoryList" style="font-size: 0.8rem; color: #dcdde1; display: flex; flex-direction: column; gap: 5px; max-height: 65vh; overflow-y: auto;">
+          <span style="text-align: center; color: #7f8c8d; padding: 20px;">Nenhum personagem guardado.</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- TELA 3: CALABOUÇO / CHEFÕES -->
+    <div id="tabDungeon" class="view-screen">
+      <div class="control-panel" style="border-color: #8e44ad; margin-bottom:0;">
+        <div class="step-title" style="color: #9b59b6;">🐉 CALABOUÇO DE CHEFÕES (PvE)</div>
+        <div style="font-size: 0.78rem; color: #dcdde1; margin-bottom: 8px;">Enfrenta chefes lendários para obter recompensas equilibradas!</div>
+
+        <div id="dungeonMenu">
+          <div style="font-size: 0.78rem; color: #f1c40f; margin-bottom: 4px; font-weight: bold;">ESCOLHA O LUTADOR:</div>
+          <select id="dungeonFighterSelect" style="width: 100%; padding: 8px; background: #0b0e1b; color: #fff; border: 1px solid rgba(255,255,255,0.08); border-radius: 10px; margin-bottom: 8px; font-size: 0.8rem; outline: none;"></select>
+
+          <div style="font-size: 0.78rem; color: #9b59b6; margin-bottom: 4px; font-weight: bold;">SELECIONE O CHEFE:</div>
+          <div style="display: flex; flex-direction: column; gap: 6px; margin-bottom: 10px;">
+            <button class="btn-speed active" id="boss1Btn" onclick="selectBoss(0)" style="text-align: left; padding: 8px;">👹 Orc Warlord (Recompensa: 15🪙)</button>
+            <button class="btn-speed" id="boss2Btn" onclick="selectBoss(1)" style="text-align: left; padding: 8px;">🐲 Dragão de Magma (Recompensa: 35🪙)</button>
+            <button class="btn-speed" id="boss3Btn" onclick="selectBoss(2)" style="text-align: left; padding: 8px;">🌌 Avatar do Vazio (Recompensa: 70🪙)</button>
+          </div>
+
+          <button class="btn" onclick="startBossRaid()" style="background: linear-gradient(180deg, #9b59b6, #8e44ad); box-shadow: 0 3px 0 #6c5ce7;">ENTRAR NO CALABOUÇO</button>
+        </div>
+
+        <div id="dungeonBattleScreen" style="display: none; text-align: left; font-size: 0.82rem;">
+          <div id="bossTitleBadge" style="text-align: center; font-size: 0.75rem; font-weight: 800; margin-bottom: 4px; color: #ff9ff3;">-</div>
+          <div class="epic-arena-box">
+            <div class="hp-container">
+              <span id="bossP1Label" style="color: #3498db;">Herói (HP: 100)</span>
+              <span id="bossP2Label" style="color: #e74c3c;">Chefe (HP: 150)</span>
+            </div>
+            <canvas id="bossCanvas" width="350" height="160"></canvas>
+            <div class="narration-box" id="bossNarrationText">O chefe ruge de raiva ao ver o desafiante...</div>
+          </div>
+        </div>
+
+        <div id="dungeonResultScreen" style="display: none; text-align: center; margin-top: 8px;">
+          <div id="dungeonResultText" style="font-size: 0.82rem; font-weight: 800; margin-bottom: 10px; color: #f1c40f; line-height: 1.4;">-</div>
+          <button class="btn" onclick="returnToDungeonMenu()" style="background: linear-gradient(180deg, #2ecc71, #27ae60); padding: 8px; font-size: 0.85rem;">VOLTAR AO CALABOUÇO</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- TELA 4: RANKING & TOP GLOBAL DE MOEDAS -->
+    <div id="tabRanking" class="view-screen">
+      <div class="control-panel" style="margin-bottom:0;">
+        <div class="step-title">🏆 HALL DA FAMA (TOP GLOBAL)</div>
+        <div style="font-size: 0.78rem; color: #a4b0be; margin-bottom: 8px;">Os melhores guerreiros e os maiores magnatas em moedas.</div>
+        
+        <div style="font-size: 0.8rem; color: #f1c40f; font-weight: bold; margin-bottom: 4px; text-align: left;">⭐ Top Heróis por Poder:</div>
+        <div id="leaderboardList" style="font-size: 0.82rem; color: #dcdde1; display: flex; flex-direction: column; gap: 6px; margin-bottom: 12px;">
+          <span style="text-align: center; color: #7f8c8d; padding: 15px;">Nenhum recorde registado.</span>
+        </div>
+
+        <div style="font-size: 0.8rem; color: #00d2d3; font-weight: bold; margin-bottom: 4px; text-align: left;">🪙 Top Global de Riqueza (Moedas):</div>
+        <div id="coinLeaderboardList" style="font-size: 0.82rem; color: #dcdde1; display: flex; flex-direction: column; gap: 6px;">
+          <span style="text-align: center; color: #7f8c8d; padding: 15px;">Nenhum magnata registado.</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- TELA 5: ARENA PVP -->
+    <div id="tabPvp" class="view-screen">
+      <div class="control-panel" id="pvpSection" style="border-color: #e74c3c; margin-bottom: 0;">
+        <div class="step-title" style="color: #e74c3c;">⚔️ ARENA DE BATALHA (ELO: <span id="playerElo">0</span>)</div>
+        
+        <div id="pvpMenu">
+          <div style="font-size: 0.82rem; margin-bottom: 6px; color: #dcdde1;">Escolhe o teu lutador para a batalha:</div>
+          <select id="pvpFighterSelect" style="width: 100%; padding: 8px; background: #0b0e1b; color: #fff; border: 1px solid rgba(255,255,255,0.08); border-radius: 10px; margin-bottom: 6px; font-size: 0.82rem; outline: none;"></select>
+          
+          <div style="font-size: 0.78rem; color: #f1c40f; margin-top: 4px; margin-bottom: 3px; font-weight: 800;">DIFICULDADE DO OPONENTE:</div>
+          <div style="display: flex; gap: 5px; margin-bottom: 6px;">
+            <button class="btn-speed" id="diffEasy" onclick="setBotDifficulty('easy')">Fácil</button>
+            <button class="btn-speed active" id="diffMedium" onclick="setBotDifficulty('medium')">Médio</button>
+            <button class="btn-speed" id="diffHard" onclick="setBotDifficulty('hard')">Difícil</button>
+          </div>
+
+          <button class="btn" onclick="startMatchmaking()" style="background: linear-gradient(180deg, #e74c3c, #c0392b); box-shadow: 0 3px 0 #922b21;">PROCURAR OPONENTE</button>
+        </div>
+
+        <div id="pvpSearchScreen" style="display: none; text-align: center; padding: 8px 0;">
+          <div style="font-size: 0.85rem; color: #f1c40f; font-weight: 800; margin-bottom: 5px;">🔍 A procurar oponente na arena...</div>
+          <div style="font-size: 1.1rem; font-weight: 800; color: #00d2d3; margin-bottom: 8px;" id="searchTimer">0s</div>
+          
+          <button class="btn" onclick="startBotMatch()" style="background: linear-gradient(180deg, #f1c40f, #e67e22); box-shadow: 0 3px 0 #d35400; margin-bottom: 5px; padding: 8px;">🤖 LUTAR CONTRA OPONENTE AGORA</button>
+          <button class="btn" onclick="cancelMatchmaking()" style="background: #4b6584; padding: 6px; font-size: 0.78rem; box-shadow: none;">CANCELAR PROCURA</button>
+        </div>
+
+        <div id="pvpBattleScreen" style="display: none; text-align: left; font-size: 0.82rem;">
+          <div id="pvpEnemyBadge" style="text-align: center; font-size: 0.72rem; font-weight: 800; margin-bottom: 3px; color: #ff9ff3;">-</div>
+          
+          <div class="epic-arena-box">
+            <div class="hp-container">
+              <span id="p1Label" style="color: #3498db;">Tu (HP: 100)</span>
+              <span id="p2Label" style="color: #e74c3c;">Inimigo (HP: 100)</span>
+            </div>
+            <canvas id="epicCanvas" width="350" height="160"></canvas>
+            <div class="narration-box" id="narrationText">Os lutadores encaram-se com as armas prontas...</div>
+          </div>
+
+          <div style="background: #0b0e1b; padding: 6px; border-radius: 8px; margin-bottom: 5px; border: 1px solid rgba(255,255,255,0.05); font-size: 0.72rem;">
+            <div style="color: #f1c40f; font-weight: 800;">O teu Lutador:</div>
+            <div id="pvpMyFighterInfo">-</div>
+          </div>
+          <div style="background: #0b0e1b; padding: 6px; border-radius: 8px; margin-bottom: 5px; border: 1px solid rgba(255,255,255,0.05); font-size: 0.72rem;">
+            <div style="color: #ff4757; font-weight: 800;">Adversário:</div>
+            <div id="pvpEnemyFighterInfo">-</div>
+          </div>
+        </div>
+
+        <div id="pvpResultScreen" style="display: none; text-align: center; margin-top: 6px;">
+          <div id="pvpResultText" style="font-size: 0.82rem; font-weight: 800; margin-bottom: 8px; color: #f1c40f; line-height: 1.35;">-</div>
+          <button class="btn" onclick="returnToPvpMenu()" style="background: linear-gradient(180deg, #2ecc71, #27ae60); padding: 8px; font-size: 0.85rem;">VOLTAR À ARENA</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- NAVEGAÇÃO INFERIOR -->
+    <nav class="footer-nav">
+      <button class="nav-btn active" id="navRoleta" onclick="switchTab('roleta')">
+        <span>🎰</span> Roleta
+      </button>
+      <button class="nav-btn" id="navInventario" onclick="switchTab('inventario')">
+        <span>🎒</span> Inventário
+      </button>
+      <button class="nav-btn" id="navDungeon" onclick="switchTab('dungeon')">
+        <span>🐉</span> Calabouço
+      </button>
+      <button class="nav-btn" id="navRanking" onclick="switchTab('ranking')">
+        <span>🏆</span> Top
+      </button>
+      <button class="nav-btn" id="navPvp" onclick="switchTab('pvp')">
+        <span>⚔️</span> PvP
+      </button>
+    </nav>
+  </div>
+
+  <!-- MODAL DE ANÚNCIO SIMULADO -->
+  <div class="modal-overlay" id="adModal">
+    <div class="modal-content" style="text-align: center;">
+      <div style="font-size: 1rem; color: #3498db; font-weight: 800; margin-bottom: 8px;">📺 ANÚNCIO PATROCINADO</div>
+      <div id="adCountdown" style="font-size: 1.5rem; font-weight: 800; color: #f1c40f; margin: 15px 0;">3s</div>
+      <div style="font-size: 0.78rem; color: #a4b0be; margin-bottom: 10px;">A assistir ao anúncio para receber +10 🪙 e +1 ⚡ Energia...</div>
+    </div>
+  </div>
+
+  <!-- MODAL DE DETALHES & TESTE DO LUTADOR -->
+  <div class="modal-overlay" id="fighterModal" onclick="closeFighterModal(event)">
+    <div class="modal-content" onclick="event.stopPropagation()">
+      <div style="font-size: 0.95rem; color: #f1c40f; font-weight: 800; text-align: center; margin-bottom: 6px; border-bottom: 1px solid rgba(255,255,255,0.08); padding-bottom: 5px;" id="modalTitle">Ficha e Teste do Lutador</div>
+      
+      <div class="dummy-arena-box">
+        <div style="font-size: 0.72rem; color: #00d2d3; font-weight: 800; margin-bottom: 2px;">🎯 CAMPO DE TREINO COM DUMMY</div>
+        <canvas id="dummyCanvas" width="300" height="130"></canvas>
+        <button class="btn" onclick="triggerDummyAttack()" style="padding: 6px; font-size: 0.72rem; background: linear-gradient(180deg, #3498db, #2980b9); box-shadow: 0 2px 0 #1c5980; margin-top: 3px;">⚡ TESTAR ATAQUE</button>
+        <div id="dummyNarration" style="font-size: 0.7rem; color: #f1c40f; margin-top: 3px; font-weight: 700; min-height: 22px; display: flex; align-items: center; justify-content: center; text-align: center;">Pronto para testar o combo de combate.</div>
+      </div>
+
+      <div style="margin-top: 6px; font-size: 0.78rem;">
+        <div style="color: #9b59b6; font-weight: bold; margin-bottom: 2px;">🛡️ ARTEFATO / RELÍQUIA:</div>
+        <select id="artifactSelect" onchange="equipArtifactToSelected(this.value)" style="width: 100%; padding: 6px; background: #05070f; color: #fff; border: 1px solid #9b59b6; border-radius: 8px; font-size: 0.75rem; outline: none;">
+          <option value="none">Nenhum Artefato</option>
+          <option value="ring">💍 Anel do Vazio (+25 pts)</option>
+          <option value="sword">⚔️ Lâmina Ancestral (+40 pts)</option>
+          <option value="crown">👑 Coroa Divina (+70 pts)</option>
+        </select>
+      </div>
+
+      <div id="modalBody" style="font-size: 0.78rem; color: #dcdde1; display: flex; flex-direction: column; gap: 5px; line-height: 1.25; margin-top: 6px;">-</div>
+      <button class="btn" onclick="closeFighterModalDirect()" style="margin-top: 8px; padding: 6px; font-size: 0.75rem; background: #4b6584; box-shadow: none;">FECHAR</button>
+    </div>
+  </div>
+
+  <script>
+    // --- CONFIGURAÇÃO DO SUPABASE ---
+    const SUPABASE_URL = 'https://ehybehqtbaistdapxvqs.supabase.co';
+    const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImVoeWJlaHF0YmFpc3RkYXB4dnFzIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Mjk4NTU4MzIsImV4cCI6MjA0NTQzMTgzMn0.eJyBGbGi01JIUzI1NiI1NnI1...'; // Substitua se necessário pela chave pública anon completa que você copiou
+    const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+    // Função assíncrona para salvar no Supabase (Tabela Ranking)
+    async function salvarRankingSupabase(nomeJogador, pontuacaoObtida) {
+      try {
+        const { data, error } = await supabase
+          .from('Ranking')
+          .insert([
+            { nome: nomeJogador, pontuacao: pontuacaoObtida }
+          ]);
+        if (error) {
+          console.error('Erro ao salvar no Supabase:', error.message);
+        } else {
+          console.log('Salvo no Supabase com sucesso!', data);
+        }
+      } catch (err) {
+        console.error('Erro de conexão com o Supabase:', err);
+      }
     }
-    body {
-      width: 100vw;
-      height: 100vh;
-      background: #090a10;
-      color: #fff;
-      display: flex;
-      justify-content: center;
-      align-items: center;
-      overflow: hidden;
+
+    var audioCtx = null;
+    function playSound(type) {
+      try {
+        if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+        var osc = audioCtx.createOscillator();
+        var gain = audioCtx.createGain();
+        osc.connect(gain); gain.connect(audioCtx.destination);
+        var now = audioCtx.currentTime;
+
+        if (type === 'tick') {
+          osc.type = 'sine';
+          osc.frequency.setValueAtTime(800, now);
+          osc.frequency.exponentialRampToValueAtTime(400, now + 0.04);
+          gain.gain.setValueAtTime(0.08, now);
+          gain.gain.linearRampToValueAtTime(0.001, now + 0.04);
+          osc.start(now); osc.stop(now + 0.04);
+        } else if (type === 'hit') {
+          osc.type = 'square';
+          osc.frequency.setValueAtTime(160, now);
+          osc.frequency.exponentialRampToValueAtTime(35, now + 0.1);
+          gain.gain.setValueAtTime(0.18, now);
+          gain.gain.linearRampToValueAtTime(0.01, now + 0.1);
+          osc.start(now); osc.stop(now + 0.1);
+        } else if (type === 'crit') {
+          osc.type = 'sawtooth';
+          osc.frequency.setValueAtTime(340, now);
+          osc.frequency.exponentialRampToValueAtTime(70, now + 0.18);
+          gain.gain.setValueAtTime(0.22, now);
+          gain.gain.linearRampToValueAtTime(0.01, now + 0.18);
+          osc.start(now); osc.stop(now + 0.18);
+        } else if (type === 'win') {
+          osc.type = 'sine';
+          osc.frequency.setValueAtTime(261.63, now);
+          osc.frequency.setValueAtTime(329.63, now + 0.1);
+          osc.frequency.setValueAtTime(392.00, now + 0.2);
+          osc.frequency.setValueAtTime(523.25, now + 0.3);
+          gain.gain.setValueAtTime(0.2, now);
+          gain.gain.linearRampToValueAtTime(0.01, now + 0.6);
+          osc.start(now); osc.stop(now + 0.6);
+        }
+      } catch(e) {}
     }
-    .container {
-      display: flex;
-      flex-direction: row;
-      align-items: center;
-      justify-content: center;
-      gap: 4vw;
-      width: 100vw;
-      height: 100vh;
-      padding: 10px;
-      transition: all 0.5s ease;
+
+    var db = [
+      { name: "Slime", weight: 30.0, visualWeight: 15.0, color: "#7bed9f", score: 20, shape: "circle", weapon: "Gosma Ácida", element: "acido", heights: [{label:"0,30m-0,50m",min:0.3,max:0.5,weight:60,unit:"m",score:10}], speed: [{label:"Lento",weight:60,score:10}], strength: [{label:"Fraco",weight:70,score:10}], defense: [{label:"Elástico",weight:60,score:40}] },
+      { name: "Goblin", weight: 28.0, visualWeight: 14.0, color: "#e3b341", score: 30, shape: "triangle", weapon: "Adaga Enferrujada", element: "fisico", heights: [{label:"0,90m-1,10m",min:0.9,max:1.1,weight:70,unit:"m",score:20}], speed: [{label:"Atleta",weight:50,score:30}], strength: [{label:"Comum",weight:60,score:20}], defense: [{label:"Frágil",weight:70,score:15}] },
+      { name: "Esqueleto", weight: 25.0, visualWeight: 13.0, color: "#dfe4ea", score: 40, shape: "rect", weapon: "Espada de Osso", element: "trevas", heights: [{label:"1,50m-1,70m",min:1.5,max:1.7,weight:60,unit:"m",score:30}], speed: [{label:"Atleta",weight:60,score:30}], strength: [{label:"Comum",weight:50,score:30}], defense: [{label:"Ossatura",weight:70,score:50}] },
+      { name: "Orc", weight: 22.0, visualWeight: 12.0, color: "#2ed573", score: 45, shape: "square", weapon: "Clava de Ferro", element: "fisico", heights: [{label:"1,90m-2,10m",min:1.9,max:2.1,weight:60,unit:"m",score:40}], speed: [{label:"Lento",weight:50,score:15}], strength: [{label:"Brutal",weight:60,score:70}], defense: [{label:"Couro Duro",weight:60,score:80}] },
+      { name: "Humano", weight: 20.0, visualWeight: 11.0, color: "#ff6b6b", score: 50, shape: "rect", weapon: "Espada Longa", element: "fisico", heights: [{label:"1,60m-1,75m",min:1.6,max:1.75,weight:50,unit:"m",score:40}], speed: [{label:"Atleta",weight:50,score:40}], strength: [{label:"Equilibrado",weight:50,score:50}], defense: [{label:"Armadura Média",weight:60,score:90}] },
+      { name: "Anão", weight: 18.0, visualWeight: 10.0, color: "#ff9f43", score: 55, shape: "square", weapon: "Machado Rúnico", element: "fogo", heights: [{label:"1,10m-1,30m",min:1.1,max:1.3,weight:70,unit:"m",score:30}], speed: [{label:"Firme",weight:40,score:35}], strength: [{label:"Força de Forja",weight:50,score:80}], defense: [{label:"Placas de Mithril",weight:50,score:150}] },
+      { name: "Fada", weight: 16.0, visualWeight: 9.0, color: "#ff9ff3", score: 60, shape: "triangle", weapon: "Bastão Estelar", element: "sagrado", heights: [{label:"20cm-40cm",min:0.2,max:0.4,weight:80,unit:"m",score:30}], speed: [{label:"Voo Mágico",weight:50,score:70}], strength: [{label:"Magia Pura",weight:60,score:60}], defense: [{label:"Barreira Mágica",weight:50,score:100}] },
+      { name: "Elfo", weight: 15.0, visualWeight: 9.0, color: "#00d2d3", score: 65, shape: "polygon", weapon: "Arco Élfico Ancestral", element: "gelo", heights: [{label:"1,70m-1,85m",min:1.7,max:1.85,weight:60,unit:"m",score:50}], speed: [{label:"Velocidade da Luz",weight:50,score:80}], strength: [{label:"Precisão Letal",weight:50,score:70}], defense: [{label:"Agilidade Silvestre",weight:50,score:90}] },
+      { name: "Sombra", weight: 14.0, visualWeight: 8.5, color: "#3d3d3d", score: 70, shape: "polygon", weapon: "Lâmina Sombria", element: "trevas", heights: [{label:"Forma Variável",min:1.5,max:2.0,weight:100,unit:"m",score:55}], speed: [{label:"Velocidade da Luz",weight:50,score:95}], strength: [{label:"Toque Gelado",weight:50,score:75}], defense: [{label:"Intangível",weight:50,score:130}] },
+      { name: "Ciborgue", weight: 13.0, visualWeight: 8.0, color: "#54a0ff", score: 75, shape: "rect", weapon: "Canhão de Plasma", element: "raio", heights: [{label:"1,75m-1,95m",min:1.75,max:1.95,weight:60,unit:"m",score:60}], speed: [{label:"Turbinas Jet",weight:50,score:90}], strength: [{label:"Servo-Motor",weight:50,score:100}], defense: [{label:"Chassi de Titânio",weight:50,score:150}] },
+      { name: "Lobisomem", weight: 12.0, visualWeight: 7.5, color: "#ee5253", score: 80, shape: "polygon", weapon: "Garras Sanguinárias", element: "fisico", heights: [{label:"1,90m-2,20m",min:1.9,max:2.2,weight:70,unit:"m",score:70}], speed: [{label:"Velocidade da Luz",weight:50,score:110}], strength: [{label:"Fúria da Lua Cheia",weight:50,score:160}], defense: [{label:"Pele Regenerativa",weight:50,score:130}] },
+      { name: "Atlante", weight: 11.0, visualWeight: 7.0, color: "#00a8ff", score: 85, shape: "rect", weapon: "Tritão de Coral", element: "gelo", heights: [{label:"1,80m-2,00m",min:1.8,max:2.0,weight:60,unit:"m",score:65}], speed: [{label:"Impulso Marítimo",weight:50,score:100}], strength: [{label:"Pressão",weight:50,score:110}], defense: [{label:"Escamas de Pérola",weight:50,score:140}] },
+      { name: "Vampiro", weight: 10.0, visualWeight: 6.5, color: "#b33939", score: 90, shape: "triangle", weapon: "Rapieira Sanguinária", element: "trevas", heights: [{label:"1,75m-1,90m",min:1.75,max:1.9,weight:60,unit:"m",score:60}], speed: [{label:"Velocidade da Luz",weight:50,score:130}], strength: [{label:"Corte Carmesim",weight:50,score:150}], defense: [{label:"Névoa",weight:50,score:200}] },
+      { name: "Efreet", weight: 9.0, visualWeight: 6.0, color: "#e1b12c", score: 95, shape: "polygon", weapon: "Cimitarra de Fogo", element: "fogo", heights: [{label:"2,00m-2,50m",min:2.0,max:2.5,weight:60,unit:"m",score:75}], speed: [{label:"Velocidade da Luz",weight:50,score:120}], strength: [{label:"Explosão Solar",weight:50,score:140}], defense: [{label:"Magmático",weight:50,score:170}] },
+      { name: "Monstro", weight: 8.0, visualWeight: 5.5, color: "#8395a7", score: 100, shape: "rect", weapon: "Tacape Gigante", element: "fisico", heights: [{label:"2,50m-3,20m",min:2.5,max:3.2,weight:60,unit:"m",score:90}], speed: [{label:"Passos Pesados",weight:60,score:50}], strength: [{label:"Impacto Devastador",weight:50,score:190}], defense: [{label:"Couro Monstruoso",weight:50,score:180}] },
+      { name: "Kitsune", weight: 7.5, visualWeight: 5.0, color: "#e84118", score: 105, shape: "polygon", weapon: "Orbe Ilusório", element: "fogo", heights: [{label:"1,60m-1,80m",min:1.6,max:1.8,weight:60,unit:"m",score:70}], speed: [{label:"Velocidade da Luz",weight:50,score:140}], strength: [{label:"Fogo Raposa",weight:50,score:130}], defense: [{label:"Ilusão Espectral",weight:50,score:190}] },
+      { name: "Treant", weight: 7.0, visualWeight: 4.8, color: "#44bd32", score: 110, shape: "square", weapon: "Raízes Devastadoras", element: "fisico", heights: [{label:"3,50m-5,00m",min:3.5,max:5.0,weight:60,unit:"m",score:100}], speed: [{label:"Lento",weight:50,score:30}], strength: [{label:"Esmagamento Florestal",weight:50,score:180}], defense: [{label:"Casca Ancestral",weight:50,score:240}] },
+      { name: "Súcubo / Íncubo", weight: 6.5, visualWeight: 4.5, color: "#c8d6e5", score: 115, shape: "polygon", weapon: "Chicote do Desejo", element: "trevas", heights: [{label:"1,70m-1,90m",min:1.7,max:1.9,weight:60,unit:"m",score:75}], speed: [{label:"Velocidade da Luz",weight:50,score:130}], strength: [{label:"Dreno de Essência",weight:50,score:150}], defense: [{label:"Sedução",weight:50,score:180}] },
+      { name: "Demônio", weight: 6.0, visualWeight: 4.2, color: "#cd6133", score: 120, shape: "polygon", weapon: "Tridente do Inferno", element: "fogo", heights: [{label:"1,90m-2,30m",min:1.9,max:2.3,weight:60,unit:"m",score:80}], speed: [{label:"Velocidade da Luz",weight:50,score:180}], strength: [{label:"Chama Infernal",weight:50,score:210}], defense: [{label:"Purgatório",weight:50,score:200}] },
+      { name: "Necromante", weight: 5.5, visualWeight: 4.0, color: "#8c7ae6", score: 125, shape: "rect", weapon: "Cetro da Morte", element: "trevas", heights: [{label:"1,70m-1,85m",min:1.7,max:1.85,weight:60,unit:"m",score:70}], speed: [{label:"Levitação",weight:50,score:125}], strength: [{label:"Exército de Ossos",weight:50,score:190}], defense: [{label:"Almas",weight:50,score:210}] },
+      { name: "Anjo", weight: 5.0, visualWeight: 3.8, color: "#70a1ff", score: 130, shape: "polygon", weapon: "Lança Sagrada", element: "sagrado", heights: [{label:"1,80m-2,20m",min:1.8,max:2.2,weight:60,unit:"m",score:80}], speed: [{label:"Velocidade da Luz",weight:50,score:150}], strength: [{label:"Luz Purificadora",weight:50,score:220}], defense: [{label:"Aura Sagrada",weight:50,score:210}] },
+      { name: "Golem de Runa", weight: 4.5, visualWeight: 3.5, color: "#718093", score: 135, shape: "square", weapon: "Punhos Monolíticos", element: "fisico", heights: [{label:"3,00m-4,50m",min:3.0,max:4.5,weight:60,unit:"m",score:110}], speed: [{label:"Rúnico",weight:50,score:60}], strength: [{label:"Esmagamento",weight:50,score:230}], defense: [{label:"Inquebrável",weight:50,score:280}] },
+      { name: "Dragão", weight: 3.5, visualWeight: 3.0, color: "#ff4757", score: 140, shape: "polygon", weapon: "Sopro Primordial", element: "fogo", heights: [{label:"4,00m-7,00m",min:4.0,max:7.0,weight:60,unit:"m",score:120}], speed: [{label:"Velocidade da Luz",weight:50,score:160}], strength: [{label:"Destruição",weight:50,score:250}], defense: [{label:"Adamantinas",weight:50,score:250}] },
+      { name: "Kraken", weight: 3.0, visualWeight: 2.8, color: "#192a56", score: 145, shape: "circle", weapon: "Tentáculos Abissais", element: "gelo", heights: [{label:"8,00m-15,0m",min:8.0,max:15.0,weight:60,unit:"m",score:140}], speed: [{label:"Mares Furiosos",weight:50,score:110}], strength: [{label:"Tsunami",weight:50,score:270}], defense: [{label:"Pele Profunda",weight:50,score:290}] },
+      { name: "Fênix", weight: 2.5, visualWeight: 2.5, color: "#fbc531", score: 150, shape: "triangle", weapon: "Asas do Renascimento", element: "fogo", heights: [{label:"2,50m-4,00m",min:2.5,max:4.0,weight:60,unit:"m",score:110}], speed: [{label:"Velocidade da Luz",weight:50,score:200}], strength: [{label:"Chama Viva",weight:50,score:240}], defense: [{label:"Imortalidade",weight:50,score:310}] },
+      { name: "Quimera", weight: 2.2, visualWeight: 2.2, color: "#44bd32", score: 155, shape: "polygon", weapon: "Garras Triplas", element: "acido", heights: [{label:"3,00m-5,00m",min:3.0,max:5.0,weight:60,unit:"m",score:125}], speed: [{label:"Velocidade da Luz",weight:50,score:170}], strength: [{label:"Tricéfalo",weight:50,score:260}], defense: [{label:"Couro Triplo",weight:50,score:280}] },
+      { name: "Titã Cósmico", weight: 2.0, visualWeight: 2.0, color: "#ffa502", score: 160, shape: "rect", weapon: "Martelo de Supernova", element: "raio", heights: [{label:"10m-25m",min:10.0,max:25.0,weight:70,unit:"m",score:150}], speed: [{label:"Velocidade da Luz",weight:50,score:230}], strength: [{label:"Colapso",weight:50,score:310}], defense: [{label:"Inabalável",weight:50,score:380}] },
+      { name: "Ceifador", weight: 1.5, visualWeight: 1.8, color: "#2f3640", score: 170, shape: "polygon", weapon: "Foice Sombria", element: "trevas", heights: [{label:"2,00m-2,50m",min:2.0,max:2.5,weight:60,unit:"m",score:110}], speed: [{label:"Velocidade da Luz",weight:50,score:240}], strength: [{label:"Corte da Morte",weight:50,score:330}], defense: [{label:"Agonia",weight:50,score:360}] },
+      { name: "Arcanjo Seraphim", weight: 1.0, visualWeight: 1.5, color: "#00d2d3", score: 185, shape: "polygon", weapon: "Espada dos Céus", element: "sagrado", heights: [{label:"2,50m-3,50m",min:2.5,max:3.5,weight:60,unit:"m",score:130}], speed: [{label:"Velocidade da Luz",weight:50,score:280}], strength: [{label:"Explosão Sagrada",weight:50,score:360}], defense: [{label:"Manto do Éden",weight:50,score:420}] },
+      { name: "Shinigami", weight: 0.8, visualWeight: 1.3, color: "#8e44ad", score: 210, shape: "polygon", weapon: "Zanpakutou", element: "trevas", heights: [{label:"1,80m-2,00m",min:1.8,max:2.0,weight:60,unit:"m",score:95}], speed: [{label:"Velocidade da Luz",weight:50,score:310}], strength: [{label:"Corte Espiritual",weight:50,score:390}], defense: [{label:"Pressão",weight:50,score:430}] },
+      { name: "Imperador Dragão", weight: 0.6, visualWeight: 1.1, color: "#c0392b", score: 235, shape: "polygon", weapon: "Lâmina Imperial", element: "fogo", heights: [{label:"5,00m-10,0m",min:5.0,max:10.0,weight:60,unit:"m",score:140}], speed: [{label:"Velocidade da Luz",weight:50,score:330}], strength: [{label:"Rugido do Rei",weight:50,score:420}], defense: [{label:"Imperial",weight:50,score:470}] },
+      { name: "Deus do Vazio", weight: 0.3, visualWeight: 0.8, color: "#1e1e2f", score: 260, shape: "circle", weapon: "Orbe Singular", element: "trevas", heights: [{label:"Forma Infinita",min:2.0,max:4.0,weight:100,unit:"m",score:120}], speed: [{label:"Velocidade da Luz",weight:50,score:380}], strength: [{label:"Implosão Cósmica",weight:50,score:480}], defense: [{label:"Absorção",weight:50,score:520}] },
+      { name: "Deus Absoluto", weight: 0.2, visualWeight: 0.5, color: "#ffd32a", score: 300, shape: "polygon", weapon: "Cetro da Criação", element: "sagrado", heights: [{label:"Onipresente",min:2.0,max:5.0,weight:100,unit:"m",score:150}], speed: [{label:"Velocidade da Luz",weight:50,score:420}], strength: [{label:"Apagamento Universal",weight:50,score:550}], defense: [{label:"Invulnerabilidade",weight:50,score:600}] }
+    ];
+
+    var skillsDb = [
+      { category: "Sem Habilidade", weight: 10, skills: [{ label: "Nenhuma", weight: 100, score: 0, desc: "Ataque físico puro.", dmg: "12 - 16 HP" }] },
+      { 
+        category: "Físico / Combate", 
+        weight: 30, 
+        skills: [
+          { label: "Soco Meteoro", weight: 25, score: 25, desc: "Soco carregado que racha o chão.", dmg: "16 - 22 HP" }, 
+          { label: "Combo Feral", weight: 25, score: 45, desc: "Sequência implacável de cortes.", dmg: "20 - 28 HP" },
+          { label: "Golpe Titânico", weight: 25, score: 60, desc: "Impacto devastador com arma pesada.", dmg: "23 - 31 HP" },
+          { label: "Fúria Berserker", weight: 25, score: 75, desc: "Ataque descontrolado e bruto.", dmg: "26 - 35 HP" }
+        ] 
+      },
+      { 
+        category: "Elemental / Mágico", 
+        weight: 30, 
+        skills: [
+          { label: "Relâmpago Celestial", weight: 25, score: 55, desc: "Invoca um raio direto dos céus.", dmg: "22 - 30 HP" }, 
+          { label: "Zero Absoluto", weight: 25, score: 70, desc: "Congela o oponente em gelo puro.", dmg: "25 - 34 HP" },
+          { label: "Inferno Ardente", weight: 25, score: 85, desc: "Chamas azuis que consomem tudo.", dmg: "28 - 38 HP" },
+          { label: "Tornado Cortante", weight: 25, score: 95, desc: "Lâminas de vento em alta velocidade.", dmg: "30 - 40 HP" }
+        ] 
+      },
+      { 
+        category: "Oculto / Trevas", 
+        weight: 18, 
+        skills: [
+          { label: "Roubo de Vida", weight: 33, score: 75, desc: "Absorve essência vital do alvo.", dmg: "24 - 32 HP" }, 
+          { label: "Maldição das Sombras", weight: 33, score: 85, desc: "Sufoca com tentáculos do vazio.", dmg: "26 - 36 HP" },
+          { label: "Foice do Submundo", weight: 34, score: 105, desc: "Corte direto da alma.", dmg: "30 - 42 HP" }
+        ] 
+      },
+      { 
+        category: "Divino / Apelão", 
+        weight: 12, 
+        skills: [
+          { label: "Manipulação da Realidade", weight: 33, score: 110, desc: "Distorce o espaço ao redor.", dmg: "32 - 45 HP" }, 
+          { label: "Parada do Tempo", weight: 33, score: 125, desc: "Congela o tempo e ataca livremente.", dmg: "38 - 50 HP" },
+          { label: "Julgamento Divino", weight: 34, score: 140, desc: "Raio de pura energia sagrada universal.", dmg: "42 - 58 HP" }
+        ] 
+      }
+    ];
+
+    var namePrefixes = ["Valerius", "Kaelen", "Aethelgard", "Zephyros", "Ignis", "Thorgar", "Sylas", "Malakor", "Astraea", "Erydor", "Nyx", "Orion", "Zarek", "Vesper"];
+    var nameTitles = ["o Flagelo dos Céus", "a Lança Celestial", "o Devorador de Almas", "o Inabalável", "a Sombra Primordial", "o Iluminado", "o Mestre do Vazio", "o Imortal"];
+
+    function generateHeroName() {
+      var p = namePrefixes[Math.floor(Math.random() * namePrefixes.length)];
+      var t = nameTitles[Math.floor(Math.random() * nameTitles.length)];
+      return p + ", " + t;
     }
-    .wheel-box {
-      position: relative;
-      width: min(55vw, 82vh);
-      height: min(55vw, 82vh);
-      display: flex;
-      justify-content: center;
-      align-items: center;
-      transition: transform 0.5s ease;
+
+    var canvas = document.getElementById('wheelCanvas');
+    var ctx = canvas.getContext('2d');
+    var spinBtn = document.getElementById('spinBtn');
+    var rerollBtn = document.getElementById('rerollBtn');
+    var stepTitle = document.getElementById('stepTitle');
+    var cardRace = document.getElementById('cardRace');
+    var cardName = document.getElementById('cardName');
+    var cardHeight = document.getElementById('cardHeight');
+    var cardSpeed = document.getElementById('cardSpeed');
+    var cardStrength = document.getElementById('cardStrength');
+    var cardDefense = document.getElementById('cardDefense');
+    var cardSkill = document.getElementById('cardSkill');
+    var cardTotal = document.getElementById('cardTotal');
+    var coinBalance = document.getElementById('coinBalance');
+    var genericColors = ["#3498db", "#9b59b6", "#1abc9c", "#e67e22", "#e74c3c", "#2ecc71", "#f1c40f", "#e84393"];
+
+    var step = 'RACE';
+    var isSpinning = false;
+    var currentAngle = 0;
+    var totalPoints = 0;
+    var totalCoins = parseInt(localStorage.getItem('gachaTotalCoins') || '50');
+    coinBalance.innerText = totalCoins;
+
+    var charData = { name: "-", race: null, height: "-", speed: "-", strength: "-", defense: "-", skill: "-", skillObj: null, artifact: null, artifactBonus: 0 };
+    var tempSkillCategory = null;
+
+    var currentSpinMode = 'normal';
+    var spinCost = 0;
+    var speedMode = 'fast';
+    var raceRolledScore = 0;
+
+    var hasUnlockedAuto = localStorage.getItem('gachaHasUnlockedAuto') === 'true';
+    var isAutoSpinning = false;
+
+    var inventory = JSON.parse(localStorage.getItem('gachaInventory') || '[]');
+    var leaderboard = JSON.parse(localStorage.getItem('gachaLeaderboard') || '[]');
+    var coinLeaderboard = JSON.parse(localStorage.getItem('gachaCoinLeaderboard') || '[]');
+    var playerElo = parseInt(localStorage.getItem('gachaPlayerElo') || '0');
+    var currentOpponent = null;
+    var activePvpFighter = null;
+    var searchTimerInterval = null;
+    var searchSeconds = 0;
+    var botDifficulty = 'medium';
+
+    var maxEnergy = 10;
+    var pvpEnergy = parseInt(localStorage.getItem('gachaPvpEnergy') ?? '10');
+    var lastEnergyTime = parseInt(localStorage.getItem('gachaLastEnergyTime') || Date.now());
+
+    document.getElementById('playerElo').innerText = playerElo;
+
+    function saveCoins() {
+      localStorage.setItem('gachaTotalCoins', totalCoins);
+      checkCoinLeaderboard(totalCoins);
     }
-    canvas {
-      width: 100%;
-      height: 100%;
-      filter: drop-shadow(0 0 15px rgba(255, 71, 87, 0.3));
-      transition: filter 0.5s ease;
+
+    function checkCoinLeaderboard(coins) {
+      var playerName = "Mestre Gacha";
+      var found = false;
+      for (var i = 0; i < coinLeaderboard.length; i++) {
+        if (coinLeaderboard[i].name === playerName) {
+          found = true;
+          if (coins > coinLeaderboard[i].coins) coinLeaderboard[i].coins = coins;
+          break;
+        }
+      }
+      if (!found) {
+        coinLeaderboard.push({ name: playerName, coins: coins });
+      }
+      coinLeaderboard.sort(function(a, b) { return b.coins - a.coins; });
+      if (coinLeaderboard.length > 5) coinLeaderboard = coinLeaderboard.slice(0, 5);
+      localStorage.setItem('gachaCoinLeaderboard', JSON.stringify(coinLeaderboard));
     }
-    .pointer {
-      position: absolute;
-      top: -8px;
-      left: 50%;
-      transform: translateX(-50%);
-      width: 0;
-      height: 0;
-      border-left: 12px solid transparent;
-      border-right: 12px solid transparent;
-      border-top: 24px solid #ff4757;
-      z-index: 10;
-      filter: drop-shadow(0 2px 4px rgba(0,0,0,0.6));
+
+    // FUNÇÃO DE ANÚNCIO RECOMPENSADO
+    function watchRewardedAd() {
+      var adModal = document.getElementById('adModal');
+      var countdownEl = document.getElementById('adCountdown');
+      adModal.style.display = 'flex';
+      var timeLeft = 3;
+      countdownEl.innerText = timeLeft + "s";
+
+      var adInterval = setInterval(function() {
+        timeLeft--;
+        if (timeLeft > 0) {
+          countdownEl.innerText = timeLeft + "s";
+        } else {
+          clearInterval(adInterval);
+          adModal.style.display = 'none';
+          
+          // Recompensa: +10 moedas e +1 energia
+          totalCoins += 10;
+          coinBalance.innerText = totalCoins;
+          saveCoins();
+
+          pvpEnergy = Math.min(maxEnergy, pvpEnergy + 1);
+          localStorage.setItem('gachaPvpEnergy', pvpEnergy);
+          updateEnergyUI();
+
+          alert("🎁 Recompensa recebida! +10 🪙 Moedas e +1 ⚡ Energia PvP ganhas!");
+        }
+      }, 1000);
     }
-    .panel {
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      gap: 12px;
-      background: #141726;
-      padding: 15px;
-      border-radius: 14px;
-      border: 1px solid #2a2f4c;
-      width: min(38vw, 280px);
-      box-shadow: 0 10px 25px rgba(0,0,0,0.5);
-      transition: all 0.4s ease;
+
+    function initAutoSpinUI() {
+      if (hasUnlockedAuto) {
+        document.getElementById('autoBuyContainer').style.display = 'none';
+        document.getElementById('autoControlsContainer').style.display = 'block';
+      } else {
+        document.getElementById('autoBuyContainer').style.display = 'block';
+        document.getElementById('autoControlsContainer').style.display = 'none';
+      }
     }
-    h2 {
-      color: #ffd32a;
-      font-size: 1rem;
-      text-transform: uppercase;
-      text-align: center;
-      letter-spacing: 1px;
+
+    function buyAutoSpin() {
+      if (totalCoins < 300) { alert("Precisas de 300 moedas!"); return; }
+      totalCoins -= 300;
+      coinBalance.innerText = totalCoins;
+      saveCoins();
+      hasUnlockedAuto = true;
+      localStorage.setItem('gachaHasUnlockedAuto', 'true');
+      initAutoSpinUI();
+      alert("🔓 AUTO-GIRO INFINITO DESBLOQUEADO!");
     }
-    .result-box {
-      background: #090a10;
-      border: 2px solid #ff4757;
-      border-radius: 8px;
-      padding: 10px;
-      text-align: center;
-      width: 100%;
-      transition: border-color 0.4s ease;
+
+    function toggleAutoSpin() {
+      if (!hasUnlockedAuto) return;
+      if (isAutoSpinning) { stopAutoSpin(); }
+      else {
+        if (step !== 'RACE') { alert("O Auto-Giro só pode ser iniciado no sorteio da Raça!"); return; }
+        isAutoSpinning = true;
+        document.getElementById('autoSpinToggleBtn').innerText = "⏹️ PARAR AUTO-GIRO";
+        document.getElementById('autoSpinToggleBtn').style.background = "linear-gradient(180deg, #e74c3c, #c0392b)";
+        rerollBtn.style.display = "none";
+        runAutoSpinLoop();
+      }
     }
-    .race-title {
-      font-size: 1.1rem;
-      font-weight: bold;
-      color: #fff;
+
+    function stopAutoSpin() {
+      isAutoSpinning = false;
+      document.getElementById('autoSpinToggleBtn').innerText = "▶️ INICIAR AUTO-GIRO";
+      document.getElementById('autoSpinToggleBtn').style.background = "linear-gradient(180deg, #2ed573, #26af5f)";
     }
-    .race-chance {
-      font-size: 0.75rem;
-      color: #a4b0be;
-      margin-top: 3px;
+
+    function runAutoSpinLoop() {
+      if (!isAutoSpinning || step !== 'RACE') return;
+      var targetScore = parseInt(document.getElementById('autoTargetSelect').value);
+      runNextStepCustom(function() {
+        if (!isAutoSpinning) return;
+        if (charData.race && charData.race.score >= targetScore) {
+          stopAutoSpin();
+          alert("🎯 ALVO ALCANÇADO! Tiraste " + charData.race.name + " (+" + charData.race.score + " pts)!");
+          rerollBtn.style.display = "none";
+          advanceToNextStepAuto();
+        } else {
+          setTimeout(function() {
+            if (isAutoSpinning && step === 'RACE') {
+              totalPoints -= raceRolledScore;
+              runAutoSpinLoop();
+            }
+          }, 250);
+        }
+      });
     }
-    .btn {
-      width: 100%;
-      padding: 12px;
-      font-size: 1rem;
-      font-weight: bold;
-      color: #fff;
-      background: linear-gradient(135deg, #ff4757, #ff6b81);
-      border: none;
-      border-radius: 8px;
-      cursor: pointer
+
+    function switchTab(tabName) {
+      document.querySelectorAll('.view-screen').forEach(el => el.classList.remove('active'));
+      document.querySelectorAll('.nav-btn').forEach(el => el.classList.remove('active'));
+      if(tabName === 'roleta') {
+        document.getElementById('tabRoleta').classList.add('active');
+        document.getElementById('navRoleta').classList.add('active');
+      } else if(tabName === 'inventario') {
+        document.getElementById('tabInventario').classList.add('active');
+        document.getElementById('navInventario').classList.add('active');
+        updateInventoryUI();
+      } else if(tabName === 'dungeon') {
+        document.getElementById('tabDungeon').classList.add('active');
+        document.getElementById('navDungeon').classList.add('active');
+        populateDungeonFighterSelect();
+      } else if(tabName === 'ranking') {
+        document.getElementById('tabRanking').classList.add('active');
+        document.getElementById('navRanking').classList.add('active');
+        updateLeaderboardUI();
+      } else if(tabName === 'pvp') {
+        document.getElementById('tabPvp').classList.add('active');
+        document.getElementById('navPvp').classList.add('active');
+        checkEnergyRegen();
+        populatePvPFighterSelect();
+      }
+    }
+
+    function checkEnergyRegen() {
+      var now = Date.now();
+      var elapsedMs = now - lastEnergyTime;
+      var minutesPassed = Math.floor(elapsedMs / 60000);
+
+      if (minutesPassed > 0 && pvpEnergy < maxEnergy) {
+        var energyGained = minutesPassed * 3;
+        pvpEnergy = Math.min(maxEnergy, pvpEnergy + energyGained);
+        lastEnergyTime = now - (elapsedMs % 60000);
+        localStorage.setItem('gachaPvpEnergy', pvpEnergy);
+        localStorage.setItem('gachaLastEnergyTime', lastEnergyTime);
+      }
+      updateEnergyUI();
+    }
+
+    function updateEnergyUI() {
+      document.getElementById('pvpEnergy').innerText = pvpEnergy + "/" + maxEnergy;
+      var timerEl = document.getElementById('energyTimer');
+      if (pvpEnergy >= maxEnergy) { timerEl.innerText = "Cheia"; }
+      else {
+        var now = Date.now();
+        var elapsedMs = now - lastEnergyTime;
+        var msRemaining = 60000 - (elapsedMs % 60000);
+        timerEl.innerText = Math.ceil(msRemaining / 1000) + "s";
+      }
+    }
+
+    function calculatePassiveIncome() {
+      var activeCount = Math.min(10, inventory.length);
+      document.getElementById('activeFightersCount').innerText = activeCount;
+      var totalPtsFromActive = 0;
+      for (var i = 0; i < activeCount; i++) { totalPtsFromActive += (inventory[i].totalPoints + (inventory[i].artifactBonus || 0)); }
+      var incomePer30s = Math.floor(totalPtsFromActive / 400);
+      document.getElementById('passiveIncomeRate').innerText = incomePer30s;
+      return incomePer30s;
+    }
+
+    var passiveCounter = 0;
+    setInterval(function() {
+      checkEnergyRegen();
+      passiveCounter++;
+      if (passiveCounter >= 30) {
+        passiveCounter = 0;
+        var income = calculatePassiveIncome();
+        if (income > 0) { totalCoins += income; coinBalance.innerText = totalCoins; saveCoins(); }
+      }
+    }, 1000);
+
+    function updateInventoryUI() {
+      var listEl = document.getElementById('inventoryList');
+      calculatePassiveIncome();
+      if (!inventory || inventory.length === 0) {
+        listEl.innerHTML = '<span style="text-align: center; color: #7f8c8d; padding: 20px;">Nenhum personagem guardado.</span>';
+        return;
+      }
+      var html = '';
+      for (var i = 0; i < inventory.length; i++) {
+        var f = inventory[i];
+        var color = f.race.color || '#3498db';
+        var artName = f.artifact ? " [" + f.artifact.name + "]" : "";
+        var totalWithArt = f.totalPoints + (f.artifactBonus || 0);
+        html += '<div onclick="openFighterDetails(' + i + ')" style="display: flex; align-items: center; gap: 8px; background: #0b0e1b; border: 1px solid rgba(255,255,255,0.06); padding: 9px 11px; border-radius: 10px; cursor: pointer; margin-bottom: 5px; transition: background 0.2s;">' +
+                '<div style="width: 28px; height: 28px; background: ' + color + '; border-radius: 6px; display: flex; align-items: center; justify-content: center; font-size: 12px; font-weight: bold; color: #000; box-shadow: 0 2px 6px rgba(0,0,0,0.4);">⚔️</div>' +
+                '<div style="flex: 1; display: flex; justify-content: space-between; align-items: center; font-size: 0.78rem;">' +
+                '<span><b>' + f.name + '</b> (' + f.race.name + ')' + artName + '</span>' +
+                '<span style="color: #00d2d3; font-weight: bold;">' + totalWithArt + ' pts</span>' +
+                '</div>' +
+                '</div>';
+      }
+      listEl.innerHTML = html;
+    }
+
+    var dummyCanvas = null, dummyCtx = null, selectedFighterIndex = null, selectedFighterForDummy = null;
+    var dummyParticles = [], dummyTexts = [];
+    var dummyAnimFrame = null;
+    var dummyIdleInterval = null;
+
+    function openFighterDetails(index) {
+      selectedFighterIndex = index;
+      selectedFighterForDummy = inventory[index];
+      var f = selectedFighterForDummy;
+      var modal = document.getElementById('fighterModal');
+      var title = document.getElementById('modalTitle');
+      var body = document.getElementById('modalBody');
+
+      title.innerText = "Ficha: " + f.name;
+      var skillDesc = f.skillObj ? f.skillObj.desc : "Nenhuma habilidade especial.";
+      
+      document.getElementById('artifactSelect').value = f.artifact ? f.artifact.id : 'none';
+
+      var totalWithArt = f.totalPoints + (f.artifactBonus || 0);
+      body.innerHTML = 
+        '<div><b>👤 Nome:</b> ' + f.name + '</div>' +
+        '<div><b>🛡️ Raça:</b> ' + f.race.name + '</div>' +
+        '<div><b>⚔️ Arma na Mão:</b> <span style="color:#f1c40f">' + (f.race.weapon || 'Arma Padrão') + '</span></div>' +
+        '<div><b>⚡ Velocidade:</b> ' + f.speed + '</div>' +
+        '<div><b>🏋️ Força:</b> ' + f.strength + '</div>' +
+        '<div><b>🛡️ Resistência:</b> ' + f.defense + '</div>' +
+        '<div style="margin-top: 3px; border-top: 1px dashed rgba(255,255,255,0.12); padding-top: 3px;"><b>✨ Habilidade:</b> <span style="color:#ffd32a">' + f.skill + '</span></div>' +
+        '<div><b>📖 Descrição:</b> ' + skillDesc + '</div>' +
+        '<div style="margin-top: 3px; border-top: 1px dashed rgba(255,255,255,0.12); padding-top: 3px; color:#00d2d3; font-weight:bold;">🏆 Poder Total: ' + totalWithArt + ' pts</div>';
+
+      modal.style.display = 'flex';
+      document.getElementById('dummyNarration').innerText = "Pronto para testar [" + (f.race.weapon || 'punhos') + "] com " + f.speed + "!";
+      initDummyArena();
+    }
+
+    function equipArtifactToSelected(val) {
+      if (selectedFighterIndex === null) return;
+      var f = inventory[selectedFighterIndex];
+      if (val === 'none') {
+        f.artifact = null; f.artifactBonus = 0;
+      } else if (val === 'ring') {
+        f.artifact = { id: 'ring', name: 'Anel do Vazio' }; f.artifactBonus = 25;
+      } else if (val === 'sword') {
+        f.artifact = { id: 'sword', name: 'Lâmina Ancestral' }; f.artifactBonus = 40;
+      } else if (val === 'crown') {
+        f.artifact = { id: 'crown', name: 'Coroa Divina' }; f.artifactBonus = 70;
+      }
+      localStorage.setItem('gachaInventory', JSON.stringify(inventory));
+      openFighterDetails(selectedFighterIndex);
+      updateInventoryUI();
+    }
+
+    function initDummyArena() {
+      dummyCanvas = document.getElementById('dummyCanvas');
+      dummyCtx = dummyCanvas.getContext('2d');
+      if (dummyIdleInterval) clearInterval(dummyIdleInterval);
+      
+      dummyIdleInterval = setInterval(function() {
+        if (document.getElementById('fighterModal').style.display === 'flex') {
+          drawDummyScene(70, 220, 0, 0);
+        }
+      }, 30);
+    }
+
+    function getElementParticleColors(element) {
+      if (element === 'fogo') return ['#ff4757', '#ff9f43', '#f1c40f', '#e67e22'];
+      if (element === 'gelo') return ['#00d2d3', '#70a1ff', '#ffffff', '#1e90ff'];
+      if (element === 'raio') return ['#f1c40f', '#54a0ff', '#ffffff', '#ffd32a'];
+      if (element === 'trevas') return ['#8c7ae6', '#2f3640', '#9b59b6', '#4834d4'];
+      if (element === 'sagrado') return ['#70a1ff', '#f1c40f', '#ffffff', '#a4b0be'];
+      if (element === 'acido') return ['#7bed9f', '#2ed573', '#1e272e', '#26af5f'];
+      return ['#ff6b6b', '#dfe4ea', '#dcdde1', '#ffa502'];
+    }
+
+    function drawDummyScene(fX, dummyX, dummyShake, dummyRecoil) {
+      if(!dummyCtx) return;
+      dummyCtx.clearRect(0, 0, dummyCanvas.width, dummyCanvas.height);
+      
+      var grad = dummyCtx.createLinearGradient(0, 100, 0, 125);
+      grad.addColorStop(0, '#1a223f'); grad.addColorStop(1, '#0b0e1b');
+      dummyCtx.fillStyle = grad;
+      dummyCtx.fillRect(10, 105, 280, 20);
+      dummyCtx.strokeStyle = '#3498db'; dummyCtx.lineWidth = 1;
+      dummyCtx.beginPath(); dummyCtx.moveTo(10, 105); dummyCtx.lineTo(290, 105); dummyCtx.stroke();
+
+      var fColor = selectedFighterForDummy ? (selectedFighterForDummy.race.color || "#3498db") : "#3498db";
+      dummyCtx.save();
+      dummyCtx.translate(fX, 82);
+      dummyCtx.fillStyle = fColor; dummyCtx.strokeStyle = "#ffffff"; dummyCtx.lineWidth = 2;
+      dummyCtx.fillRect(-11, -11, 22, 22); dummyCtx.strokeRect(-11, -11, 22, 22);
+      dummyCtx.fillStyle = "#f1c40f";
+      dummyCtx.fillRect(11, -3, 14, 5);
+      dummyCtx.restore();
+
+      dummyCtx.save();
+      var actualDummyX = dummyX + dummyRecoil + (Math.random() - 0.5) * dummyShake;
+      dummyCtx.translate(actualDummyX, 82);
+      dummyCtx.fillStyle = "#e67e22"; dummyCtx.strokeStyle = "#d35400"; dummyCtx.lineWidth = 2;
+      dummyCtx.beginPath(); dummyCtx.arc(0, -9, 8, 0, Math.PI * 2); dummyCtx.fill(); dummyCtx.stroke();
+      dummyCtx.fillRect(-8, 0, 16, 24); dummyCtx.strokeRect(-8, 0, 16, 24);
+      dummyCtx.restore();
+
+      for (var i = dummyParticles.length - 1; i >= 0; i--) {
+        var p = dummyParticles[i];
+        dummyCtx.save();
+        dummyCtx.globalAlpha = p.alpha;
+        dummyCtx.fillStyle = p.color;
+        dummyCtx.beginPath();
+        dummyCtx.arc(p.x, p.y, p.size, 0, Math.PI * 2);
+        dummyCtx.fill();
+        dummyCtx.restore();
+
+        p.x += p.vx;
+        p.y += p.vy;
+        p.vy += p.gravity;
+        p.vx *= 0.96;
+
+        if (p.y >= 104) {
+          p.y = 104;
+          p.vy = -p.vy * 0.2;
+          p.vx *= 0.8;
+        }
+        p.alpha -= 0.012;
+        if (p.alpha <= 0) dummyParticles.splice(i, 1);
+      }
+
+      for (var j = dummyTexts.length - 1; j >= 0; j--) {
+        var ft = dummyTexts[j];
+        dummyCtx.save();
+        dummyCtx.font = "bold 13px 'Segoe UI', Arial";
+        dummyCtx.fillStyle = ft.color;
+        dummyCtx.shadowColor = "rgba(0,0,0,0.8)";
+        dummyCtx.shadowBlur = 4;
+        dummyCtx.globalAlpha = ft.alpha;
+        dummyCtx.fillText(ft.text, ft.x, ft.y);
+        dummyCtx.restore();
+        ft.y += ft.vy; ft.alpha -= 0.02;
+        if (ft.alpha <= 0) dummyTexts.splice(j, 1);
+      }
+    }
+
+    function triggerDummyAttack() {
+      if(!selectedFighterForDummy) return;
+      var f = selectedFighterForDummy;
+      var weaponName = f.race.weapon || "Punhos";
+      var speedName = f.speed || "Normal";
+      var skillName = f.skill || "Ataque";
+      var element = f.race.element || "fisico";
+
+      document.getElementById('dummyNarration').innerText = 
+        "⚡ Usa " + speedName + " com [" + weaponName + "] e ativa [" + skillName + "]!";
+
+      var startX = 70, targetX = 190;
+      var startTime = performance.now(), duration = 300;
+      var recoilVal = 0;
+
+      function stepAttack(now) {
+        var elapsed = now - startTime, progress = Math.min(elapsed / duration, 1);
+        var ease = 1 - Math.pow(1 - progress, 3);
+        var currentX = startX + (targetX - startX) * ease;
+        drawDummyScene(currentX, 220, 0, recoilVal);
+
+        if(progress < 1) { 
+          dummyAnimFrame = requestAnimationFrame(stepAttack); 
+        } else {
+          playSound('crit');
+          var totalPts = f.totalPoints + (f.artifactBonus || 0);
+          var baseDmg = Math.round(totalPts * 0.12) + Math.floor(Math.random() * 8) + 6;
+          
+          dummyTexts.push({ x: 210, y: 50, text: "-" + baseDmg + " HP", color: "#ff4757", alpha: 1.0, vy: -1.2 });
+          
+          var colors = getElementParticleColors(element);
+          for(var i=0; i<30; i++) {
+            var col = colors[Math.floor(Math.random() * colors.length)];
+            var angle = (Math.random() - 0.5) * Math.PI;
+            var spd = 1.0 + Math.random() * 3.0;
+            dummyParticles.push({
+              x: 220,
+              y: 80,
+              vx: Math.cos(angle) * spd + (Math.random() - 0.5) * 2,
+              vy: Math.sin(angle) * spd - 2.0,
+              size: 2 + Math.random() * 3,
+              color: col,
+              alpha: 1.0,
+              gravity: 0.18
+            });
+          }
+
+          recoilVal = 12;
+          var impactStart = performance.now();
+          
+          function impactAnim(nowImp) {
+            var impElapsed = nowImp - impactStart;
+            var impProg = Math.min(impElapsed / 350, 1);
+            recoilVal = 12 * (1 - impProg) * Math.cos(impProg * Math.PI * 3);
+            
+            var backX = targetX + (startX - targetX) * impProg;
+            drawDummyScene(backX, 220, 3, recoilVal);
+
+            if(impProg < 1) {
+              requestAnimationFrame(impactAnim);
+            } else {
+              drawDummyScene(startX, 220, 0, 0);
+            }
+          }
+          requestAnimationFrame(impactAnim);
+        }
+      }
+      if(dummyAnimFrame) cancelAnimationFrame(dummyAnimFrame);
+      dummyAnimFrame = requestAnimationFrame(stepAttack);
+    }
+
+    function closeFighterModalDirect() { 
+      if (dummyIdleInterval) clearInterval(dummyIdleInterval);
+      document.getElementById('fighterModal').style.display = 'none'; 
+    }
+    function closeFighterModal(e) { 
+      if (dummyIdleInterval) clearInterval(dummyIdleInterval);
+      document.getElementById('fighterModal').style.display = 'none'; 
+    }
+
+    var bosses = [
+      { name: "Orc Warlord", hp: 120, maxHp: 120, score: 120, defenseScore: 40, color: "#2ed573", shape: "square", weapon: "Machado Gigante", element: "fisico", reward: 15 },
+      { name: "Dragão de Magma", hp: 200, maxHp: 200, score: 200, defenseScore: 120, color: "#ff4757", shape: "polygon", weapon: "Sopro Ardente", element: "fogo", reward: 35 },
+      { name: "Avatar do Vazio", hp: 320, maxHp: 320, score: 320, defenseScore: 250, color: "#1e1e2f", shape: "circle", weapon: "Foice Dimensional", element: "trevas", reward: 70 }
+    ];
+    var selectedBossIndex = 0;
+
+    function populateDungeonFighterSelect() {
+      var select = document.getElementById('dungeonFighterSelect');
+      select.innerHTML = '';
+      if (inventory.length === 0) {
+        var opt = document.createElement('option'); opt.text = "Sem heróis no inventário!"; select.appendChild(opt); return;
+      }
+      for (var i = 0; i < inventory.length; i++) {
+        var f = inventory[i];
+        var totalWithArt = f.totalPoints + (f.artifactBonus || 0);
+        var opt = document.createElement('option');
+        opt.value = i;
+        opt.text = f.name + " (" + f.race.name + " - " + totalWithArt + " pts)";
+        select.appendChild(opt);
+      }
+    }
+
+    function selectBoss(idx) {
+      selectedBossIndex = idx;
+      for(var i=0; i<3; i++) {
+        document.getElementById('boss' + (i+1) + 'Btn').classList.remove('active');
+      }
+      document.getElementById('boss' + (idx+1) + 'Btn').classList.add('active');
+    }
+
+    function startBossRaid() {
+      if (inventory.length === 0) { alert("Precisas de heróis no inventário!"); return; }
+      var selectIndex = document.getElementById('dungeonFighterSelect').value;
+      var hero = inventory[selectIndex];
+      var boss = bosses[selectedBossIndex];
+
+      document.getElementById('dungeonMenu').style.display = "none";
+      document.getElementById('dungeonBattleScreen').style.display = "block";
+      document.getElementById('bossTitleBadge').innerText = "🐉 CALABOUÇO: Enfrentando " + boss.name;
+
+      runBossRaidBattle(hero, boss, function(didWin) {
+        var resultHTML = "";
+        if (didWin) {
+          playSound('win');
+          var rewardCoins = boss.reward;
+          totalCoins += rewardCoins;
+          coinBalance.innerText = totalCoins;
+          saveCoins();
+          resultHTML = "🏆 <b>Vitória Gloriosa!</b> Derrotaste o chefe e ganhaste <b>" + rewardCoins + "🪙</b>!";
+        } else {
+          resultHTML = "💀 <b>Derrota.</b> O chefe era demasiado poderoso para este herói.";
+        }
+        setTimeout(function() {
+          document.getElementById('dungeonBattleScreen').style.display = "none";
+          document.getElementById('dungeonResultText').innerHTML = resultHTML;
+          document.getElementById('dungeonResultScreen').style.display = "block";
+        }, 800);
+      });
+    }
+
+    function returnToDungeonMenu() {
+      document.getElementById('dungeonResultScreen').style.display = "none";
+      document.getElementById('dungeonMenu').style.display = "block";
+      populateDungeonFighterSelect();
+    }
+
+    var bossCanvas = null, bossCtx = null, bossTimeout = null;
+
+    function calculateMitigatedDamage(attackerPoints, defenderDefenseScore) {
+      var rawDmg = Math.round(attackerPoints * 0.18) + Math.floor(Math.random() * 12) + 10;
+      var defFactor = Math.min(0.88, (defenderDefenseScore || 0) / 450);
+      var finalDmg = Math.max(15, Math.round(rawDmg * (1 - defFactor)));
+      return finalDmg;
+    }
+
+    function runBossRaidBattle(hero, bossTemplate, cb) {
+      if (bossTimeout) clearTimeout(bossTimeout);
+      bossCanvas = document.getElementById('bossCanvas');
+      bossCtx = bossCanvas.getContext('2d');
+
+      var heroTotalPts = hero.totalPoints + (hero.artifactBonus || 0);
+      var heroDefense = charData.defense ? 80 : 50;
+
+      var f1 = { homeX: 75, x: 75, baseY: 90, y: 90, shape: hero.race.shape || "rect", color: hero.race.color || "#3498db", hp: 100, maxHp: 100, element: hero.race.element || "fisico", scaleY: 1 };
+      var f2 = { homeX: 275, x: 275, baseY: 90, y: 90, shape: bossTemplate.shape, color: bossTemplate.color, hp: bossTemplate.hp, maxHp: bossTemplate.maxHp, element: bossTemplate.element, scaleY: 1 };
+
+      var particles = [], floatTexts = [], screenShake = 0;
+      var isBattleRunning = true;
+
+      function setNarration(txt) {
+        var el = document.getElementById('bossNarrationText');
+        if(el) el.innerText = txt;
+      }
+
+      function spawnParticles(x, y, element, count) {
+        var colors = getElementParticleColors(element);
+        for (var i = 0; i < count; i++) {
+          var col = colors[Math.floor(Math.random() * colors.length)];
+          var angle = Math.random() * Math.PI * 2, speed = 1.0 + Math.random() * 3.0;
+          particles.push({ x: x, y: y, vx: Math.cos(angle) * speed, vy: Math.sin(angle) * speed - 2.0, size: 2 + Math.random() * 3.5, color: col, alpha: 1.0, gravity: 0.18 });
+        }
+      }
+
+      function addFloatingText(x, y, text, color) { floatTexts.push({ x: x, y: y, text: text, color: color, alpha: 1.0, vy: -1.2 }); }
+
+      function drawFighter(ctx, f) {
+        ctx.save(); ctx.translate(f.x, f.y); ctx.scale(1, f.scaleY);
+        ctx.fillStyle = f.color; ctx.strokeStyle = "#ffffff"; ctx.lineWidth = 2;
+        var size = 16;
+        if (f.shape === "square" || f.shape === "rect") { ctx.fillRect(-size, -size, size*2, size*2); ctx.strokeRect(-size, -size, size*2, size*2); }
+        else if (f.shape === "triangle") { ctx.beginPath(); ctx.moveTo(0, -size*1.3); ctx.lineTo(size, size); ctx.lineTo(-size, size); ctx.closePath(); ctx.fill(); ctx.stroke(); }
+        else {
+          ctx.beginPath();
+          for (var i = 0; i < 5; i++) {
+            var angle = (i * 2 * Math.PI) / 5 - Math.PI / 2;
+            var px = size * Math.cos(angle), py = size * Math.sin(angle);
+            if (i === 0) ctx.moveTo(px, py); else ctx.lineTo(px, py);
+          }
+          ctx.closePath(); ctx.fill(); ctx.stroke();
+        }
+        ctx.restore();
+      }
+
+      function renderScene() {
+        if (!bossCtx) return;
+        bossCtx.save();
+        if (screenShake > 0) {
+          bossCtx.translate((Math.random() - 0.5) * screenShake, (Math.random() - 0.5) * screenShake);
+          screenShake *= 0.85; if (screenShake < 0.5) screenShake = 0;
+        }
+        bossCtx.clearRect(0, 0, bossCanvas.width, bossCanvas.height);
+        
+        var grad = bossCtx.createLinearGradient(0, 110, 0, 140);
+        grad.addColorStop(0, '#1a223f'); grad.addColorStop(1, '#0b0e1b');
+        bossCtx.fillStyle = grad; bossCtx.fillRect(15, 115, 320, 25);
+        bossCtx.strokeStyle = "#3498db"; bossCtx.lineWidth = 2;
+        bossCtx.beginPath(); bossCtx.moveTo(15, 115); bossCtx.lineTo(335, 115); bossCtx.stroke();
+
+        for (var i = particles.length - 1; i >= 0; i--) {
+          var p = particles[i];
+          bossCtx.save(); bossCtx.globalAlpha = p.alpha; bossCtx.fillStyle = p.color; bossCtx.beginPath(); bossCtx.arc(p.x, p.y, p.size, 0, Math.PI*2); bossCtx.fill(); bossCtx.restore();
+          p.x += p.vx; p.y += p.vy; p.vy += p.gravity; p.vx *= 0.96;
+          if (p.y >= 113) { p.y = 113; p.vy = -p.vy * 0.2; p.vx *= 0.8; }
+          p.alpha -= 0.012; if (p.alpha <= 0) particles.splice(i, 1);
+        }
+
+        for (var j = floatTexts.length - 1; j >= 0; j--) {
+          var ft = floatTexts[j];
+          bossCtx.save(); bossCtx.font = "bold 13px 'Segoe UI', Arial"; bossCtx.fillStyle = ft.color; bossCtx.shadowColor = "rgba(0,0,0,0.8)"; bossCtx.shadowBlur = 4; bossCtx.globalAlpha = ft.alpha;
+          bossCtx.fillText(ft.text, ft.x, ft.y); bossCtx.restore();
+          ft.y += ft.vy; ft.alpha -= 0.02; if (ft.alpha <= 0) floatTexts.splice(j, 1);
+        }
+
+        drawFighter(bossCtx, f1); drawFighter(bossCtx, f2);
+        bossCtx.restore();
+      }
+
+      function battleAnimLoop() {
+        renderScene();
+        if (isBattleRunning) requestAnimationFrame(battleAnimLoop);
+      }
+      requestAnimationFrame(battleAnimLoop);
+
+      setNarration("⚡ O confronto contra " + bossTemplate.name + " começou!");
+      var turn = 0, maxTurns = 12;
+
+      function stepAttackAnim(attacker, target, onImpact) {
+        var startX = attacker.x, startY = attacker.baseY;
+        var targetX = (attacker.homeX < target.homeX) ? (target.homeX - 30) : (target.homeX + 30);
+        var startTime = performance.now(), duration = 300;
+
+        function animateStep(now) {
+          var elapsed = now - startTime, progress = Math.min(elapsed / duration, 1);
+          var ease = 1 - Math.pow(1 - progress, 3);
+          attacker.x = startX + (targetX - startX) * ease;
+          attacker.y = startY - Math.sin(progress * Math.PI) * 40;
+          
+          if (progress < 1) {
+            requestAnimationFrame(animateStep);
+          } else {
+            onImpact();
+            animateReturn(attacker);
+          }
+        }
+        requestAnimationFrame(animateStep);
+      }
+
+      function animateReturn(attacker) {
+        var startX = attacker.x, startTime = performance.now(), duration = 250;
+        function stepRet(now) {
+          var elapsed = now - startTime, progress = Math.min(elapsed / duration, 1);
+          var ease = progress * progress;
+          attacker.x = startX + (attacker.homeX - startX) * ease;
+          attacker.y = attacker.baseY; 
+          if (progress < 1) requestAnimationFrame(stepRet);
+        }
+        requestAnimationFrame(stepRet);
+      }
+
+      function bossLoop() {
+        turn++;
+        var isHeroTurn = (turn % 2 !== 0);
+        var attacker = isHeroTurn ? f1 : f2, defender = isHeroTurn ? f2 : f1;
+
+        stepAttackAnim(attacker, defender, function() {
+          playSound('hit');
+          var dmg = isHeroTurn ? calculateMitigatedDamage(heroTotalPts, bossTemplate.defenseScore) : calculateMitigatedDamage(bossTemplate.score, heroDefense);
+          defender.hp = Math.max(0, defender.hp - dmg);
+          spawnParticles(defender.x, defender.y, attacker.element, 20);
+          addFloatingText(defender.x - 10, defender.y - 22, "-" + dmg, "#ff4757");
+          screenShake = 4;
+
+          if (isHeroTurn) {
+            setNarration("⚔️ " + hero.name + " ataca " + bossTemplate.name + " (-" + dmg + " HP)");
+          } else {
+            setNarration("💥 " + bossTemplate.name + " contra-ataca! (-" + dmg + " HP)");
+          }
+
+          document.getElementById('bossP1Label').innerText = hero.name + " (HP: " + Math.round(f1.hp) + ")";
+          document.getElementById('bossP2Label').innerText = bossTemplate.name + " (HP: " + Math.round(f2.hp) + ")";
+
+          checkEnd();
+        });
+      }
+
+      function checkEnd() {
+        if (f1.hp <= 0 || f2.hp <= 0 || turn >= maxTurns) {
+          var win = f1.hp > f2.hp || (f1.hp > 0 && f2.hp <= 0);
+          isBattleRunning = false;
+          bossTimeout = setTimeout(function() { cb(win); }, 1000);
+        } else {
+          bossTimeout = setTimeout(bossLoop, 1400);
+        }
+      }
+
+      bossTimeout = setTimeout(bossLoop, 600);
+    }
+
+    function updateLeaderboardUI() {
+      var listEl = document.getElementById('leaderboardList');
+      if (!leaderboard || leaderboard.length === 0) {
+        listEl.innerHTML = '<span style="text-align: center; color: #7f8c8d; padding: 15px;">Nenhum recorde registado.</span>';
+      } else {
+        var html = '';
+        for (var i = 0; i < leaderboard.length; i++) {
+          var e = leaderboard[i];
+          html += '<div style="display: flex; justify-content: space-between; border-bottom: 1px dashed rgba(255,255,255,0.08); padding-bottom: 4px;">' +
+                  '<span>#' + (i+1) + ' <b>' + e.name + '</b> (' + e.race + ')</span>' +
+                  '<span style="color: #00d2d3; font-weight: bold;">' + e.score + ' pts</span>' +
+                  '</div>';
+        }
+        listEl.innerHTML = html;
+      }
+
+      var coinListEl = document.getElementById('coinLeaderboardList');
+      if (!coinLeaderboard || coinLeaderboard.length === 0) {
+        coinListEl.innerHTML = '<span style="text-align: center; color: #7f8c8d; padding: 15px;">Nenhum magnata registado.</span>';
+      } else {
+        var coinHtml = '';
+        for (var j = 0; j < coinLeaderboard.length; j++) {
+          var c = coinLeaderboard[j];
+          coinHtml += '<div style="display: flex; justify-content: space-between; border-bottom: 1px dashed rgba(255,255,255,0.08); padding-bottom: 4px;">' +
+                      '<span>#' + (j+1) + ' <b>' + c.name + '</b></span>' +
+                      '<span style="color: #f1c40f; font-weight: bold;">' + c.coins + ' 🪙</span>' +
+                      '</div>';
+        }
+        coinListEl.innerHTML = coinHtml;
+      }
+    }
+
+    function setSpeed(mode) {
+      if (isSpinning) return;
+      speedMode = mode;
+      if (mode === 'fast') {
+        document.getElementById('speedFastBtn').classList.add('active');
+        document.getElementById('speedSlowBtn').classList.remove('active');
+      } else {
+        document.getElementById('speedSlowBtn').classList.add('active');
+        document.getElementById('speedFastBtn').classList.remove('active');
+      }
+    }
+
+    function setBotDifficulty(diff) {
+      botDifficulty = diff;
+      document.getElementById('diffEasy').classList.remove('active');
+      document.getElementById('diffMedium').classList.remove('active');
+      document.getElementById('diffHard').classList.remove('active');
+      document.getElementById('diff' + diff.charAt(0).toUpperCase() + diff.slice(1)).classList.add('active');
+    }
+
+    function setSpinMode(mode, cost) {
+      if (isSpinning) { alert("Aguarda o fim do giro atual!"); return; }
+      if (cost > 0 && totalCoins < cost) { alert("Moedas insuficientes!"); return; }
+      currentSpinMode = mode; spinCost = cost;
+      var modes = ['normal', 'bom', 'otimo', 'secreto'];
+      for (var i = 0; i < modes.length; i++) {
+        var btn = document.getElementById('mode' + modes[i].charAt(0).toUpperCase() + modes[i].slice(1));
+        if (modes[i] === mode) btn.classList.add('selected'); else btn.classList.remove('selected');
+      }
+      stepTitle.innerText = "Modo: Giro " + mode.toUpperCase() + " Selecionado (Válido para 1 Giro)";
+    }
+
+    function resetSpinModeToNormal() {
+      currentSpinMode = 'normal';
+      spinCost = 0;
+      var modes = ['normal', 'bom', 'otimo', 'secreto'];
+      for (var i = 0; i < modes.length; i++) {
+        var btn = document.getElementById('mode' + modes[i].charAt(0).toUpperCase() + modes[i].slice(1));
+        if (modes[i] === 'normal') btn.classList.add('selected'); else btn.classList.remove('selected');
+      }
+    }
+
+    function getAdjustedDb() {
+      var clonedDb = JSON.parse(JSON.stringify(db));
+      var multiplier = 1;
+      if (currentSpinMode === 'bom') multiplier = 2;
+      else if (currentSpinMode === 'otimo') multiplier = 5;
+      else if (currentSpinMode === 'secreto') multiplier = 10;
+
+      if (multiplier > 1) {
+        for (var i = 0; i < clonedDb.length; i++) {
+          if (clonedDb[i].weight < 8) {
+            clonedDb[i].visualWeight *= multiplier;
+            clonedDb[i].weight *= multiplier;
+          }
+        }
+      }
+      return clonedDb;
+    }
+
+    function getCurrentList() {
+      if (step === 'RACE') return getAdjustedDb();
+      if (step === 'HEIGHT') return charData.race.heights;
+      if (step === 'SPEED') return charData.race.speed;
+      if (step === 'STRENGTH') return charData.race.strength;
+      if (step === 'DEFENSE') return charData.race.defense;
+      if (step === 'SKILL_CATEGORY') return skillsDb;
+      if (step === 'SKILL_SELECT') return tempSkillCategory ? tempSkillCategory.skills : [{label: "Nenhuma", weight: 100, score: 0}];
+      return [];
+    }
+
+    function drawWheel(angle) {
+      var items = getCurrentList();
+      if (!items || items.length === 0) return;
+      var width = canvas.width;
+      var radius = width / 2;
+      ctx.clearRect(0, 0, width, width);
+
+      var totalW = 0;
+      for (var i = 0; i < items.length; i++) { totalW += (step === 'RACE' ? items[i].visualWeight : items[i].weight); }
+
+      var startAngle = angle || 0;
+      for (var i = 0; i < items.length; i++) {
+        var item = items[i];
+        var w = (step === 'RACE' ? item.visualWeight : item.weight);
+        var sliceAngle = (w / totalW) * (2 * Math.PI);
+        var endAngle = startAngle + sliceAngle;
+
+        ctx.beginPath();
+        ctx.moveTo(radius, radius);
+        ctx.arc(radius, radius, radius - 4, startAngle, endAngle);
+        ctx.closePath();
+        ctx.fillStyle = (step === 'RACE') ? item.color : genericColors[i % genericColors.length];
+        ctx.fill();
+        ctx.lineWidth = 2;
+        ctx.strokeStyle = "#111528";
+        ctx.stroke();
+
+        ctx.save();
+        ctx.translate(radius, radius);
+        ctx.rotate(startAngle + sliceAngle / 2);
+        ctx.textAlign = "right";
+        ctx.fillStyle = "#ffffff";
+        var label = item.label || item.name || item.category;
+        var fontSize = Math.min(7.5, Math.max(3.5, radius * sliceAngle * 0.25));
+        ctx.font = "bold " + Math.floor(fontSize) + "px Arial";
+        ctx.fillText(label, radius - 12, 3.5);
+        ctx.restore();
+
+        startAngle = endAngle;
+      }
+
+      ctx.beginPath(); ctx.arc(radius, radius, 22, 0, 2 * Math.PI);
+      ctx.fillStyle = "#111528"; ctx.fill();
+      ctx.lineWidth = 3.5; ctx.strokeStyle = "#ff4757"; ctx.stroke();
+    }
+
+    function getWeightedIndex(list) {
+      var total = 0;
+      for (var i = 0; i < list.length; i++) total += list[i].weight;
+      var rand = Math.random() * total;
+      for (var j = 0; j < list.length; j++) {
+        if (rand < list[j].weight) return j;
+        rand -= list[j].weight;
+      }
+      return 0;
+    }
+
+    function spin(callback) {
+      if (isSpinning) return;
+      isSpinning = true; spinBtn.disabled = true; 
+      if (!isAutoSpinning) { rerollBtn.style.display = "none"; }
+      
+      var items = getCurrentList();
+      var selectedIndex = getWeightedIndex(items);
+      var selectedItem = items[selectedIndex];
+
+      var totalW = 0;
+      for (var i = 0; i < items.length; i++) totalW += (step === 'RACE' ? items[i].visualWeight : items[i].weight);
+
+      var acc = 0, targetStart = 0, targetSize = 0;
+      for (var i = 0; i < items.length; i++) {
+        var w = (step === 'RACE' ? items[i].visualWeight : items[i].weight);
+        var sliceAngle = (w / totalW) * (2 * Math.PI);
+        if (i === selectedIndex) { targetStart = acc; targetSize = sliceAngle; break; }
+        acc += sliceAngle;
+      }
+
+      var randomOffset = targetSize * (0.2 + Math.random() * 0.6);
+      var targetRotation = -Math.PI / 2 - (targetStart + randomOffset);
+      var turns = (speedMode === 'fast') ? (10 * 2 * Math.PI) : (6 * 2 * Math.PI);
+      var duration = (speedMode === 'fast') ? 800 : 2000;
+
+      var currentMod = currentAngle % (2 * Math.PI);
+      var targetDelta = (targetRotation - currentMod) % (2 * Math.PI);
+      if (targetDelta < 0) targetDelta += (2 * Math.PI);
+
+      var finalAngle = currentAngle + turns + targetDelta;
+      var start = performance.now();
+      var initialAngle = currentAngle;
+      var lastTickAngle = initialAngle;
+
+      function animate(now) {
+        var elapsed = now - start;
+        var progress = Math.min(elapsed / duration, 1);
+        var ease = 1 - Math.pow(1 - progress, 3);
+        currentAngle = initialAngle + (finalAngle - initialAngle) * ease;
+        
+        if (Math.abs(currentAngle - lastTickAngle) > 0.3) {
+          playSound('tick');
+          lastTickAngle = currentAngle;
+        }
+
+        drawWheel(currentAngle);
+        if (progress < 1) { requestAnimationFrame(animate); }
+        else { isSpinning = false; callback(selectedItem); }
+      }
+      requestAnimationFrame(animate);
+    }
+
+    function actionSaveCharacter() {
+      var fighterData = {
+        name: charData.name,
+        race: charData.race,
+        height: charData.height,
+        speed: charData.speed,
+        strength: charData.strength,
+        defense: charData.defense,
+        skill: charData.skill,
+        skillObj: charData.skillObj,
+        artifact: null,
+        artifactBonus: 0,
+        totalPoints: totalPoints
+      };
+      
+      inventory.push(fighterData);
+      localStorage.setItem('gachaInventory', JSON.stringify(inventory));
+      updateInventoryUI();
+
+      var newEntry = { name: charData.name, score: totalPoints, race: charData.race.name, skill: charData.skill };
+      leaderboard.push(newEntry);
+      leaderboard.sort(function(a, b) { return b.score - a.score; });
+      if (leaderboard.length > 5) leaderboard = leaderboard.slice(0, 5);
+      localStorage.setItem('gachaLeaderboard', JSON.stringify(leaderboard));
+      updateLeaderboardUI();
+
+      // Envia automaticamente para a tabela Ranking no Supabase
+      salvarRankingSupabase(charData.name, totalPoints);
+
+      alert("💾 Personagem guardado com sucesso no inventário e enviado para o Supabase!");
+      resetGameForNewCharacter();
+    }
+
+    function actionSellCharacter() {
+      var coinsEarned = Math.max(2, Math.floor(totalPoints / 50));
+      totalCoins += coinsEarned;
+      coinBalance.innerText = totalCoins;
+      saveCoins();
+      alert("🪙 Vendeste o personagem por " + coinsEarned + " moedas!");
+      resetGameForNewCharacter();
+    }
+
+    function resetGameForNewCharacter() {
+      stopAutoSpin();
+      step = 'RACE';
+      totalPoints = 0;
+      raceRolledScore = 0;
+      charData = { name: "-", race: null, height: "-", speed: "-", strength: "-", defense: "-", skill: "-", skillObj: null, artifact: null, artifactBonus: 0 };
+      tempSkillCategory = null;
+      cardRace.innerText = "Pronto para Criar";
+      cardName.innerHTML = "👤 Nome: <span>-</span>";
+      cardHeight.innerHTML = "📏 Altura: <span>-</span>";
+      cardSpeed.innerHTML = "⚡ Velocidade: <span>-</span>";
+      cardStrength.innerHTML = "🏋️ Força: <span>-</span>";
+      cardDefense.innerHTML = "🛡️ Resistência: <span>-</span>";
+      cardSkill.innerHTML = "✨ Habilidade: <span>-</span>";
+      cardTotal.innerHTML = "🏆 Poder Total: <span>0 pts</span>";
+      coinBalance.innerText = totalCoins;
+      stepTitle.innerText = "Sorteio de Raça";
+      
+      spinBtn.style.display = "block";
+      spinBtn.disabled = false;
+      spinBtn.innerText = "GIRAR ROLETA";
+      document.getElementById('doneActions').style.display = "none";
+      
+      resetSpinModeToNormal();
+      currentAngle = 0;
+      drawWheel(0);
+    }
+
+    function triggerReroll() {
+      if (step !== 'RACE' || isSpinning || isAutoSpinning) return;
+      rerollBtn.style.display = "none";
+      totalPoints -= raceRolledScore;
+      cardRace.innerText = "Sorteando novamente...";
+      runNextStep();
+    }
+
+    var epicCanvas = null, epicCtx = null, pvpActiveTimeout = null;
+
+    function runSkillCinemaBattle(myFighter, enemyFighter, outcomeCallback) {
+      if (pvpActiveTimeout) clearTimeout(pvpActiveTimeout);
+      epicCanvas = document.getElementById('epicCanvas');
+      epicCtx = epicCanvas.getContext('2d');
+
+      var myTotalPts = myFighter.totalPoints + (myFighter.artifactBonus || 0);
+      var enemyTotalPts = enemyFighter.totalPoints;
+
+      var f1 = { homeX: 75, x: 75, baseY: 90, y: 90, shape: myFighter.race.shape || "rect", color: myFighter.race.color || "#3498db", hp: 100, maxHp: 100, element: myFighter.race.element || "fisico", scaleY: 1 };
+      var f2 = { homeX: 275, x: 275, baseY: 90, y: 90, shape: enemyFighter.race.shape || "triangle", color: enemyFighter.race.color || "#e74c3c", hp: 100, maxHp: 100, element: enemyFighter.race.element || "fisico", scaleY: 1 };
+
+      var particles = [], floatTexts = [], screenShake = 0;
+      var isBattleRunning = true;
+
+      function setNarration(text) { 
+        var nEl = document.getElementById('narrationText');
+        if (nEl) nEl.innerText = text; 
+      }
+
+      function spawnParticles(x, y, element, count) {
+        var colors = getElementParticleColors(element);
+        for (var i = 0; i < count; i++) {
+          var col = colors[Math.floor(Math.random() * colors.length)];
+          var angle = Math.random() * Math.PI * 2, speed = 1.0 + Math.random() * 3.0;
+          particles.push({ x: x, y: y, vx: Math.cos(angle) * speed, vy: Math.sin(angle) * speed - 2.0, size: 2 + Math.random() * 3.5, color: col, alpha: 1.0, gravity: 0.18 });
+        }
+      }
+
+      function addFloatingText(x, y, text, color) { floatTexts.push({ x: x, y: y, text: text, color: color, alpha: 1.0, vy: -1.2 }); }
+
+      function drawFighter(ctx, f) {
+        ctx.save(); ctx.translate(f.x, f.y); ctx.scale(1, f.scaleY);
+        ctx.fillStyle = f.color; ctx.strokeStyle = "#ffffff"; ctx.lineWidth = 2;
+        var size = 16;
+        if (f.shape === "square" || f.shape === "rect") { ctx.fillRect(-size, -size, size*2, size*2); ctx.strokeRect(-size, -size, size*2, size*2); }
+        else if (f.shape === "triangle") { ctx.beginPath(); ctx.moveTo(0, -size*1.3); ctx.lineTo(size, size); ctx.lineTo(-size, size); ctx.closePath(); ctx.fill(); ctx.stroke(); }
+        else {
+          ctx.beginPath();
+          for (var i = 0; i < 5; i++) {
+            var angle = (i * 2 * Math.PI) / 5 - Math.PI / 2;
+            var px = size * Math.cos(angle), py = size * Math.sin(angle);
+            if (i === 0) ctx.moveTo(px, py); else ctx.lineTo(px, py);
+          }
+          ctx.closePath(); ctx.fill(); ctx.stroke();
+        }
+        ctx.restore();
+      }
+
+      function renderScene() {
+        if (!epicCtx) return;
+        epicCtx.save();
+        if (screenShake > 0) {
+          epicCtx.translate((Math.random() - 0.5) * screenShake, (Math.random() - 0.5) * screenShake);
+          screenShake *= 0.85; if (screenShake < 0.5) screenShake = 0;
+        }
+        epicCtx.clearRect(0, 0, epicCanvas.width, epicCanvas.height);
+        
+        var grad = epicCtx.createLinearGradient(0, 110, 0, 140);
+        grad.addColorStop(0, '#1a223f'); grad.addColorStop(1, '#0b0e1b');
+        epicCtx.fillStyle = grad; epicCtx.fillRect(15, 115, 320, 25);
+        epicCtx.strokeStyle = "#3498db"; epicCtx.lineWidth = 2;
+        epicCtx.beginPath(); epicCtx.moveTo(15, 115); epicCtx.lineTo(335, 115); epicCtx.stroke();
+
+        for (var i = particles.length - 1; i >= 0; i--) {
+          var p = particles[i];
+          epicCtx.save(); epicCtx.globalAlpha = p.alpha; epicCtx.fillStyle = p.color; epicCtx.beginPath(); epicCtx.arc(p.x, p.y, p.size, 0, Math.PI*2); epicCtx.fill(); epicCtx.restore();
+          p.x += p.vx; p.y += p.vy; p.vy += p.gravity; p.vx *= 0.96;
+          if (p.y >= 113) { p.y = 113; p.vy = -p.vy * 0.2; p.vx *= 0.8; }
+          p.alpha -= 0.012; if (p.alpha <= 0) particles.splice(i, 1);
+        }
+
+        for (var j = floatTexts.length - 1; j >= 0; j--) {
+          var ft = floatTexts[j];
+          epicCtx.save(); epicCtx.font = "bold 13px 'Segoe UI', Arial"; epicCtx.fillStyle = ft.color; epicCtx.shadowColor = "rgba(0,0,0,0.8)"; epicCtx.shadowBlur = 4; epicCtx.globalAlpha = ft.alpha;
+          epicCtx.fillText(ft.text, ft.x, ft.y); epicCtx.restore();
+          ft.y += ft.vy; ft.alpha -= 0.02; if (ft.alpha <= 0) floatTexts.splice(j, 1);
+        }
+
+        drawFighter(epicCtx, f1); drawFighter(epicCtx, f2);
+        epicCtx.restore();
+      }
+
+      function battleAnimLoop() {
+        renderScene();
+        if (isBattleRunning) requestAnimationFrame(battleAnimLoop);
+      }
+      requestAnimationFrame(battleAnimLoop);
+
+      setNarration("⚡ Batalha PvP na Arena iniciada!");
+      var turn = 0, maxTurns = 10;
+
+      function animateJumpAttack(attacker, target, onImpact) {
+        var startX = attacker.x, startY = attacker.baseY;
+        var targetX = (attacker.homeX < target.homeX) ? (target.homeX - 30) : (target.homeX + 30);
+        var startTime = performance.now(), duration = 300;
+
+        function stepJump(now) {
+          var elapsed = now - startTime, progress = Math.min(elapsed / duration, 1);
+          var ease = 1 - Math.pow(1 - progress, 3);
+          attacker.x = startX + (targetX - startX) * ease;
+          attacker.y = startY - Math.sin(progress * Math.PI) * 40;
+          
+          if (progress < 1) {
+            requestAnimationFrame(stepJump);
+          } else {
+            onImpact();
+            animateReturn(attacker);
+          }
+        }
+        requestAnimationFrame(stepJump);
+      }
+
+      function animateReturn(attacker) {
+        var startX = attacker.x, startTime = performance.now(), duration = 250;
+        function stepReturn(now) {
+          var elapsed = now - startTime, progress = Math.min(elapsed / duration, 1);
+          var ease = progress * progress;
+          attacker.x = startX + (attacker.homeX - startX) * ease;
+          attacker.y = attacker.baseY; 
+          if (progress < 1) requestAnimationFrame(stepReturn);
+        }
+        requestAnimationFrame(stepReturn);
+      }
+
+      function battleLoop() {
+        turn++;
+        var isF1Turn = (turn % 2 !== 0);
+        var attacker = isF1Turn ? f1 : f2, defender = isF1Turn ? f2 : f1;
+        var activeFighterObj = isF1Turn ? myFighter : enemyFighter;
+        var attackerName = activeFighterObj.name;
+        var weaponNameUsed = activeFighterObj.race.weapon || "Arma";
+        var speedUsed = activeFighterObj.speed || "Normal";
+
+        animateJumpAttack(attacker, defender, function() {
+          playSound('hit');
+          var atkPts = isF1Turn ? myTotalPts : enemyTotalPts;
+          var defPts = isF1Turn ? enemyTotalPts : myTotalPts;
+          
+          var baseDmg = calculateMitigatedDamage(atkPts, defPts * 0.4);
+          var isCrit = (Math.random() < 0.15);
+          var finalDmg = isCrit ? Math.round(baseDmg * 1.35) : baseDmg;
+          screenShake = isCrit ? 5 : 2.5;
+
+          defender.hp = Math.max(0, defender.hp - finalDmg);
+          spawnParticles(defender.x, defender.y, attacker.element, isCrit ? 22 : 14);
+          addFloatingText(defender.x - 10, defender.y - 22, "-" + finalDmg, isCrit ? "#f1c40f" : "#ff4757");
+
+          if (isCrit) {
+            setNarration("💥 " + speedUsed + "! " + attackerName + " usa [" + weaponNameUsed + "] (CRÍTICO: -" + finalDmg + ")");
+          } else {
+            setNarration("⚔️ " + attackerName + " ataca com [" + weaponNameUsed + "] (-" + finalDmg + ")");
+          }
+
+          var p1Lbl = document.getElementById('p1Label');
+          var p2Lbl = document.getElementById('p2Label');
+          if (p1Lbl) p1Lbl.innerText = myFighter.name + " (HP: " + Math.round(f1.hp) + ")";
+          if (p2Lbl) p2Lbl.innerText = enemyFighter.name + " (HP: " + Math.round(f2.hp) + ")";
+
+          checkBattleEnd();
+        });
+      }
+
+      function checkBattleEnd() {
+        if (turn >= maxTurns || f1.hp <= 0 || f2.hp <= 0) {
+          var didWin = f1.hp > f2.hp || (f1.hp > 0 && f2.hp <= 0);
+          isBattleRunning = false;
+          pvpActiveTimeout = setTimeout(function() {
+            if (didWin) {
+              playSound('win');
+              f2.hp = 0; var p2Lbl = document.getElementById('p2Label'); if (p2Lbl) p2Lbl.innerText = enemyFighter.name + " (HP: 0)";
+              setNarration("🏆 VITÓRIA ÉPICA NA ARENA!"); 
+              pvpActiveTimeout = setTimeout(function() { outcomeCallback(true); }, 1200);
+            } else {
+              f1.hp = 0; var p1Lbl = document.getElementById('p1Label'); if (p1Lbl) p1Lbl.innerText = myFighter.name + " (HP: 0)";
+              setNarration("💀 DERROTA NA ARENA."); 
+              pvpActiveTimeout = setTimeout(function() { outcomeCallback(false); }, 1200);
+            }
+          }, 800);
+        } else { pvpActiveTimeout = setTimeout(battleLoop, 1400); }
+      }
+
+      pvpActiveTimeout = setTimeout(battleLoop, 600);
+    }
+
+    function populatePvPFighterSelect() {
+      var select = document.getElementById('pvpFighterSelect');
+      select.innerHTML = '';
+      if (inventory.length === 0) {
+        var opt = document.createElement('option'); opt.text = "Sem heróis no inventário!"; select.appendChild(opt); return;
+      }
+      for (var i = 0; i < inventory.length; i++) {
+        var f = inventory[i];
+        var totalWithArt = f.totalPoints + (f.artifactBonus || 0);
+        var opt = document.createElement('option');
+        opt.value = i;
+        opt.text = f.name + " (" + f.race.name + " - " + totalWithArt + " pts)";
+        select.appendChild(opt);
+      }
+    }
+
+    function startMatchmaking() {
+      checkEnergyRegen();
+      if (pvpEnergy <= 0) { alert("⚡ Sem energia!"); return; }
+      if (inventory.length === 0) { alert("Precisas de heróis no inventário!"); return; }
+
+      var selectIndex = document.getElementById('pvpFighterSelect').value;
+      if (selectIndex === "" || isNaN(selectIndex)) return;
+      activePvpFighter = inventory[selectIndex];
+
+      document.getElementById('pvpMenu').style.display = "none";
+      document.getElementById('pvpSearchScreen').style.display = "block";
+
+      searchSeconds = 0; document.getElementById('searchTimer').innerText = "0s";
+      if (searchTimerInterval) clearInterval(searchTimerInterval);
+      searchTimerInterval = setInterval(function() {
+        searchSeconds++; document.getElementById('searchTimer').innerText = searchSeconds + "s";
+      }, 1000);
+    }
+
+    function cancelMatchmaking() {
+      if (searchTimerInterval) clearInterval(searchTimerInterval);
+      document.getElementById('pvpSearchScreen').style.display = "none";
+      document.getElementById('pvpMenu').style.display = "block";
+    }
+
+    function startBotMatch() {
+      if (searchTimerInterval) clearInterval(searchTimerInterval);
+      checkEnergyRegen();
+      if (pvpEnergy <= 0) { alert("⚡ Sem energia!"); return; }
+
+      pvpEnergy--; localStorage.setItem('gachaPvpEnergy', pvpEnergy); updateEnergyUI();
+
+      var selectIndex = document.getElementById('pvpFighterSelect').value;
+      activePvpFighter = inventory[selectIndex];
+      var myTotalPts = activePvpFighter.totalPoints + (activePvpFighter.artifactBonus || 0);
+
+      var enemyPoints = myTotalPts;
+      if (botDifficulty === 'easy') { enemyPoints = Math.max(30, myTotalPts - 35); }
+      else if (botDifficulty === 'medium') { enemyPoints = Math.max(40, myTotalPts + (Math.floor(Math.random() * 31) - 15)); }
+      else if (botDifficulty === 'hard') { enemyPoints = myTotalPts + 60; }
+
+      var randomRaceObj = db[Math.floor(Math.random() * db.length)];
+      currentOpponent = {
+        name: generateHeroName(),
+        totalPoints: enemyPoints,
+        race: { name: randomRaceObj.name, color: randomRaceObj.color, shape: randomRaceObj.shape, weapon: randomRaceObj.weapon, element: randomRaceObj.element },
+        speed: "Velocidade da Luz",
+        skill: "Ataque Épico"
+      };
+
+      document.getElementById('pvpEnemyBadge').innerText = "⚔️ MODO: " + botDifficulty.toUpperCase() + " | Inimigo: " + enemyPoints + " pts";
+      document.getElementById('pvpSearchScreen').style.display = "none";
+      document.getElementById('pvpMyFighterInfo').innerHTML = "<b>" + activePvpFighter.name + "</b> [" + activePvpFighter.race.weapon + "] — " + myTotalPts + " pts";
+      document.getElementById('pvpEnemyFighterInfo').innerHTML = "<b>" + currentOpponent.name + "</b> [" + currentOpponent.race.weapon + "] — " + currentOpponent.totalPoints + " pts";
+      document.getElementById('pvpBattleScreen').style.display = "block";
+
+      runSkillCinemaBattle(activePvpFighter, currentOpponent, function(didWin) {
+        var resultHTML = didWin ? "🏆 <b>Vitória!</b>" : "❌ <b>Derrota.</b>";
+        var finalEloChange = didWin ? 20 : -10;
+        playerElo = Math.max(0, playerElo + finalEloChange);
+        localStorage.setItem('gachaPlayerElo', playerElo);
+        document.getElementById('playerElo').innerText = playerElo;
+
+        setTimeout(function() {
+          document.getElementById('pvpBattleScreen').style.display = "none";
+          document.getElementById('pvpResultText').innerHTML = resultHTML;
+          document.getElementById('pvpResultScreen').style.display = "block";
+        }, 400);
+      });
+    }
+
+    function returnToPvpMenu() {
+      document.getElementById('pvpResultScreen').style.display = "none";
+      document.getElementById('pvpMenu').style.display = "block";
+      populatePvPFighterSelect();
+    }
+
+    function advanceToNextStepAuto() {
+      setTimeout(function() {
+        if (step === 'RACE') { step = 'HEIGHT'; stepTitle.innerText = "Sorteio de Altura"; }
+        else if (step === 'HEIGHT') { step = 'SPEED'; stepTitle.innerText = "Sorteio de Velocidade"; }
+        else if (step === 'SPEED') { step = 'STRENGTH'; stepTitle.innerText = "Sorteio de Força"; }
+        else if (step === 'STRENGTH') { step = 'DEFENSE'; stepTitle.innerText = "Sorteio de Resistência"; }
+        else if (step === 'DEFENSE') { step = 'SKILL_CATEGORY'; stepTitle.innerText = "Sorteio de Categoria de Habilidade"; }
+        else if (step === 'SKILL_CATEGORY') {
+          if (tempSkillCategory.category === "Sem Habilidade") {
+            charData.skillObj = tempSkillCategory.skills[0];
+            charData.name = generateHeroName();
+            cardName.innerHTML = "👤 Nome: <span>" + charData.name + "</span>";
+            step = 'DONE'; stepTitle.innerText = "✨ FICHA CONCLUÍDA! ✨";
+            spinBtn.style.display = "none"; document.getElementById('doneActions').style.display = "flex";
+            return;
+          } else { step = 'SKILL_SELECT'; stepTitle.innerText = "Sorteio: " + tempSkillCategory.category; }
+        } else if (step === 'SKILL_SELECT') {
+          charData.name = generateHeroName();
+          cardName.innerHTML = "👤 Nome: <span>" + charData.name + "</span>";
+          step = 'DONE'; stepTitle.innerText = "✨ FICHA CONCLUÍDA! ✨";
+          spinBtn.style.display = "none"; document.getElementById('doneActions').style.display = "flex";
+          return;
+        }
+
+        currentAngle = 0; drawWheel(0);
+        spinBtn.disabled = false; spinBtn.innerText = "GIRAR ROLETA";
+      }, 400);
+    }
+
+    function runNextStepCustom(onComplete) {
+      if (spinCost > 0) {
+        if (totalCoins < spinCost) { stopAutoSpin(); alert("Moedas insuficientes!"); return; }
+        totalCoins -= spinCost; coinBalance.innerText = totalCoins; saveCoins();
+      }
+      spinBtn.innerText = "GIRANDO...";
+      spin(function(item) {
+        charData.race = item; raceRolledScore = item.score; totalPoints += item.score;
+        cardRace.innerText = item.name + " (+" + item.score + " pts)";
+        cardTotal.innerHTML = "🏆 Poder Total: <span style='color:#00d2d3'>" + totalPoints + " pts</span>";
+        
+        resetSpinModeToNormal();
+
+        if (!isAutoSpinning) { rerollBtn.style.display = "block"; }
+        stepTitle.innerText = "Raça Sorteada!";
+        if (onComplete) onComplete();
+      });
+    }
+
+    function runNextStep() {
+      if (isSpinning) return;
+      if (step === 'RACE') { runNextStepCustom(function() { rerollBtn.style.display = "none"; advanceToNextStepAuto(); }); }
+      else {
+        if (spinCost > 0) {
+          if (totalCoins < spinCost) { alert("Moedas insuficientes!"); return; }
+          totalCoins -= spinCost; coinBalance.innerText = totalCoins; saveCoins();
+        }
+        spinBtn.innerText = "GIRANDO...";
+        spin(function(item) {
+          if (step === 'HEIGHT') {
+            var rawValue = item.min + Math.random() * (item.max - item.min);
+            var finalH = (item.unit === 'cm') ? (Math.round(rawValue) + " cm") : (rawValue.toFixed(2).replace('.', ',') + " m");
+            charData.height = finalH; totalPoints += item.score;
+            cardHeight.innerHTML = "📏 Altura: <span>" + finalH + " (+" + item.score + " pts)</span>";
+          } else if (step === 'SPEED') {
+            charData.speed = item.label; totalPoints += item.score;
+            cardSpeed.innerHTML = "⚡ Velocidade: <span>" + item.label + " (+" + item.score + " pts)</span>";
+          } else if (step === 'STRENGTH') {
+            charData.strength = item.label; totalPoints += item.score;
+            cardStrength.innerHTML = "🏋️ Força: <span>" + item.label + " (+" + item.score + " pts)</span>";
+          } else if (step === 'DEFENSE') {
+            charData.defense = item.label; totalPoints += item.score;
+            cardDefense.innerHTML = "🛡️ Resistência: <span>" + item.label + " (+" + item.score + " pts)</span>";
+          } else if (step === 'SKILL_CATEGORY') {
+            tempSkillCategory = item;
+            if (item.category === "Sem Habilidade") {
+              charData.skill = "Nenhuma"; charData.skillObj = item.skills[0];
+              cardSkill.innerHTML = "✨ Habilidade: <span style='color:#ff4757'>Nenhuma (0 pts)</span>";
+            }
+          } else if (step === 'SKILL_SELECT') {
+            charData.skill = item.label; charData.skillObj = item; totalPoints += item.score;
+            cardSkill.innerHTML = "✨ Habilidade: <span style='color:#ffd32a'>" + item.label + " (+" + item.score + " pts)</span>";
+          }
+
+          cardTotal.innerHTML = "🏆 Poder Total: <span style='color:#00d2d3'>" + totalPoints + " pts</span>";
+          resetSpinModeToNormal();
+          advanceToNextStepAuto();
+        });
+      }
+    }
+
+    initAutoSpinUI();
+    drawWheel(0);
+  </script>
+</body>
+</html>
