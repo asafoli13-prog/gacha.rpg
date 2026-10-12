@@ -3,18 +3,31 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-  <title>Gacha RPG Mobile - Sistema de Anúncios e Sorte Normal</title>
+  <title>Gacha RPG Mobile - Poki Edition</title>
   
   <!-- Script do Supabase v2 -->
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 
+  <!-- Poki SDK Oficial -->
+  <script src="https://game-cdn.poki.com/scripts/v2/poki-sdk.js"></script>
+
   <style>
-    * { box-sizing: border-box; margin: 0; padding: 0; user-select: none; font-family: 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; -webkit-tap-highlight-color: transparent; }
-    body { background-color: #05070f; color: #fff; display: flex; flex-direction: column; align-items: center; justify-content: flex-start; min-height: 100vh; overflow: hidden; }
-    .app-container { display: flex; flex-direction: column; align-items: center; width: 100%; max-width: 420px; height: 100vh; max-height: 890px; position: relative; background: #070a17; box-shadow: 0 0 40px rgba(0,0,0,0.8); }
+    * { box-sizing: border-box; margin: 0; padding: 0; user-select: none; font-family: 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; -webkit-tap-highlight-color: transparent; touch-action: pan-y; }
     
-    .view-screen { display: none; flex-direction: column; width: 100%; flex: 1; overflow-y: auto; padding: 10px; padding-bottom: 80px; scroll-behavior: smooth; }
-    .view-screen.active { display: flex; }
+    /* Scroll livre, forçado e natural em qualquer dispositivo ou iframe */
+    html, body { background-color: #05070f; color: #fff; width: 100%; height: auto; min-height: 100vh; overflow-x: hidden; overflow-y: scroll !important; -webkit-overflow-scrolling: touch; }
+    
+    .app-container { display: flex; flex-direction: column; align-items: center; width: 100%; max-width: 420px; min-height: 100vh; height: auto; position: relative; background: #070a17; box-shadow: 0 0 40px rgba(0,0,0,0.8); margin: 0 auto; padding-bottom: 120px; overflow: visible; }
+    
+    .view-screen { display: none; flex-direction: column; width: 100%; padding: 10px; }
+    .view-screen.active { display: flex !important; }
+
+    /* Tela de Início (Nome obrigatório) */
+    #tabWelcome { display: none; align-items: center; justify-content: center; min-height: 90vh; text-align: center; padding: 20px; }
+    #tabWelcome.active { display: flex !important; }
+
+    .welcome-card { background: #111528; border: 2px solid #f1c40f; border-radius: 20px; padding: 24px; width: 100%; box-shadow: 0 15px 40px rgba(0,0,0,0.8); }
+    .name-input { width: 100%; padding: 12px; background: #05070f; color: #fff; border: 1px solid #3498db; border-radius: 10px; font-size: 1rem; text-align: center; margin: 15px 0; outline: none; }
 
     .control-panel { background: #111528; border: 1px solid rgba(255,255,255,0.08); border-radius: 20px; padding: 14px; width: 100%; text-align: center; box-shadow: 0 12px 35px rgba(0,0,0,0.6); margin-bottom: 10px; backdrop-filter: blur(10px); }
     .step-title { font-size: 0.95rem; color: #f1c40f; margin-bottom: 8px; text-transform: uppercase; font-weight: 800; letter-spacing: 1.2px; text-shadow: 0 2px 4px rgba(0,0,0,0.5); }
@@ -57,7 +70,7 @@
     .hp-container { display: flex; justify-content: space-between; font-size: 0.78rem; margin-bottom: 3px; padding: 0 4px; font-weight: 800; }
     .narration-box { background: #05070f; border: 1px solid #f1c40f; border-radius: 8px; padding: 6px; font-size: 0.78rem; color: #f1c40f; min-height: 38px; display: flex; align-items: center; justify-content: center; text-align: center; margin-top: 5px; font-weight: 700; line-height: 1.25; box-shadow: inset 0 0 10px rgba(0,0,0,0.5); }
 
-    .footer-nav { position: absolute; bottom: 0; left: 0; width: 100%; display: flex; background: #111528; border-top: 1px solid rgba(255,255,255,0.08); padding: 8px 2px; justify-content: space-around; z-index: 50; border-radius: 20px 20px 0 0; backdrop-filter: blur(12px); box-shadow: 0 -5px 25px rgba(0,0,0,0.5); }
+    .footer-nav { position: fixed; bottom: 0; left: 50%; transform: translateX(-50%); width: 100%; max-width: 420px; display: none; background: #111528; border-top: 1px solid rgba(255,255,255,0.08); padding: 8px 2px; justify-content: space-around; z-index: 50; border-radius: 20px 20px 0 0; backdrop-filter: blur(12px); box-shadow: 0 -5px 25px rgba(0,0,0,0.5); }
     .nav-btn { flex: 1; background: transparent; border: none; color: #7f8c8d; font-size: 0.7rem; font-weight: 800; display: flex; flex-direction: column; align-items: center; gap: 2px; cursor: pointer; padding: 2px; transition: color 0.2s, transform 0.2s; }
     .nav-btn.active { color: #f1c40f; transform: translateY(-2px); }
 
@@ -71,8 +84,18 @@
 <body>
   <div class="app-container">
     
+    <!-- TELA 0: CADASTRO DO NOME DO JOGADOR -->
+    <div id="tabWelcome" class="view-screen active">
+      <div class="welcome-card">
+        <div style="font-size: 1.3rem; font-weight: 800; color: #f1c40f; margin-bottom: 8px;">🎮 BEM-VINDO AO GACHA RPG</div>
+        <div style="font-size: 0.85rem; color: #a4b0be; margin-bottom: 12px;">Para entrar na arena e salvar os seus recordes no ranking global, digite o seu nome de herói:</div>
+        <input type="text" id="playerNameInput" class="name-input" placeholder="Ex: MestreGacha99" maxlength="18" onkeydown="if(event.key==='Enter') startGameWithName()">
+        <button class="btn" onclick="startGameWithName()" style="background: linear-gradient(180deg, #2ed573, #26af5f); box-shadow: 0 3px 0 #1b7a42;">ENTRAR NO JOGO</button>
+      </div>
+    </div>
+
     <!-- TELA 1: ROLETA & GACHA -->
-    <div id="tabRoleta" class="view-screen active">
+    <div id="tabRoleta" class="view-screen">
       <div class="control-panel">
         <div class="step-title" id="stepTitle">Sorteio de Raça</div>
 
@@ -86,7 +109,6 @@
           <div>⏱️ Reg.: <b id="energyTimer" style="color: #00d2d3;">Cheia</b></div>
         </div>
 
-        <!-- BOTÃO DE ANÚNCIO RECOMPENSADO -->
         <button class="btn" onclick="watchRewardedAd()" style="background: linear-gradient(180deg, #3498db, #2980b9); box-shadow: 0 3px 0 #1c5980; font-size: 0.8rem; padding: 8px; margin-bottom: 6px;">
           📺 VER ANÚNCIO (+10 🪙 e +1 ⚡)
         </button>
@@ -170,7 +192,7 @@
       <div class="control-panel" style="margin-bottom:0;">
         <div class="step-title">🎒 INVENTÁRIO & ARTEFATOS</div>
         <div style="font-size: 0.78rem; color: #a4b0be; margin-bottom: 8px;">Toque num herói para testar no Dummy, equipar relíquias e simular combate.</div>
-        <div id="inventoryList" style="font-size: 0.8rem; color: #dcdde1; display: flex; flex-direction: column; gap: 5px; max-height: 65vh; overflow-y: auto;">
+        <div id="inventoryList" style="font-size: 0.8rem; color: #dcdde1; display: flex; flex-direction: column; gap: 5px;">
           <span style="text-align: center; color: #7f8c8d; padding: 20px;">Nenhum personagem guardado.</span>
         </div>
       </div>
@@ -289,8 +311,8 @@
       </div>
     </div>
 
-    <!-- NAVEGAÇÃO INFERIOR -->
-    <nav class="footer-nav">
+    <!-- NAVEGAÇÃO INFERIOR FIXA -->
+    <nav class="footer-nav" id="footerNav">
       <button class="nav-btn active" id="navRoleta" onclick="switchTab('roleta')">
         <span>🎰</span> Roleta
       </button>
@@ -307,15 +329,6 @@
         <span>⚔️</span> PvP
       </button>
     </nav>
-  </div>
-
-  <!-- MODAL DE ANÚNCIO SIMULADO -->
-  <div class="modal-overlay" id="adModal">
-    <div class="modal-content" style="text-align: center;">
-      <div style="font-size: 1rem; color: #3498db; font-weight: 800; margin-bottom: 8px;">📺 ANÚNCIO PATROCINADO</div>
-      <div id="adCountdown" style="font-size: 1.5rem; font-weight: 800; color: #f1c40f; margin: 15px 0;">3s</div>
-      <div style="font-size: 0.78rem; color: #a4b0be; margin-bottom: 10px;">A assistir ao anúncio para receber +10 🪙 e +1 ⚡ Energia...</div>
-    </div>
   </div>
 
   <!-- MODAL DE DETALHES & TESTE DO LUTADOR -->
@@ -346,26 +359,68 @@
   </div>
 
   <script>
-    // --- CONFIGURAÇÃO DO SUPABASE ---
     const SUPABASE_URL = 'https://ehybehqtbaistdapxvqs.supabase.co';
-    const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImVoeWJlaHF0YmFpc3RkYXB4dnFzIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Mjk4NTU4MzIsImV4cCI6MjA0NTQzMTgzMn0.eJyBGbGi01JIUzI1NiI1NnI1...'; // Substitua se necessário pela chave pública anon completa que você copiou
-    const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+    const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImVoeWJlaHF0YmFpc3RkYXB4dnFzIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTA2ODk0MDQsImV4cCI6MjA2NjI2NTQwNH0.ExemploChaveSupabaseOuSuaChaveAnonReal';
+    const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
-    // Função assíncrona para salvar no Supabase (Tabela Ranking)
-    async function salvarRankingSupabase(nomeJogador, pontuacaoObtida) {
+    var playerName = '';
+
+    window.onload = function() {
+      if (typeof PokiSDK !== 'undefined') {
+        PokiSDK.init().then(() => {
+          PokiSDK.gameLoadingFinished();
+        }).catch(() => {});
+      }
+      
+      document.getElementById('tabWelcome').classList.add('active');
+    };
+
+    function startGameWithName() {
+      var inputVal = document.getElementById('playerNameInput').value.trim();
+      if (!inputVal) { alert("Por favor, digite o seu nome para continuar!"); return; }
+      playerName = inputVal;
+      localStorage.setItem('gachaPlayerName', playerName);
+
+      document.getElementById('tabWelcome').classList.remove('active');
+      document.getElementById('tabRoleta').classList.add('active');
+      document.getElementById('footerNav').style.display = 'flex';
+      
+      drawWheel(0);
+      initAutoSpinUI();
+      window.scrollTo(0, 0);
+    }
+
+    async function salvarNoSupabase(nomeHeroi, pontuacao, racaHeroi) {
       try {
-        const { data, error } = await supabase
+        const fullIdentifierName = playerName + " (" + nomeHeroi + ")";
+        const { error } = await supabaseClient
           .from('Ranking')
-          .insert([
-            { nome: nomeJogador, pontuacao: pontuacaoObtida }
-          ]);
-        if (error) {
-          console.error('Erro ao salvar no Supabase:', error.message);
-        } else {
-          console.log('Salvo no Supabase com sucesso!', data);
-        }
-      } catch (err) {
-        console.error('Erro de conexão com o Supabase:', err);
+          .insert([{ nome: fullIdentifierName, pontuacao: pontuacao, raca: racaHeroi }]);
+        if (error) console.error("Erro ao salvar no Supabase:", error.message);
+      } catch(e) {}
+    }
+
+    function watchRewardedAd() {
+      if (typeof PokiSDK !== 'undefined') {
+        PokiSDK.rewardedBreak().then((success) => {
+          if (success) {
+            totalCoins += 10;
+            coinBalance.innerText = totalCoins;
+            saveCoins();
+            pvpEnergy = Math.min(maxEnergy, pvpEnergy + 1);
+            localStorage.setItem('gachaPvpEnergy', pvpEnergy);
+            updateEnergyUI();
+            alert("🎁 Recompensa recebida com sucesso!");
+          }
+        });
+      } else {
+        totalCoins += 10;
+        coinBalance.innerText = totalCoins;
+        saveCoins();
+        pvpEnergy = Math.min(maxEnergy, pvpEnergy + 1);
+        localStorage.setItem('gachaPvpEnergy', pvpEnergy);
+        updateEnergyUI();
+        alert("🎁 Recompensa simulada (Modo local)!");
       }
     }
 
@@ -379,34 +434,20 @@
         var now = audioCtx.currentTime;
 
         if (type === 'tick') {
-          osc.type = 'sine';
-          osc.frequency.setValueAtTime(800, now);
-          osc.frequency.exponentialRampToValueAtTime(400, now + 0.04);
-          gain.gain.setValueAtTime(0.08, now);
-          gain.gain.linearRampToValueAtTime(0.001, now + 0.04);
+          osc.type = 'sine'; osc.frequency.setValueAtTime(800, now); osc.frequency.exponentialRampToValueAtTime(400, now + 0.04);
+          gain.gain.setValueAtTime(0.08, now); gain.gain.linearRampToValueAtTime(0.001, now + 0.04);
           osc.start(now); osc.stop(now + 0.04);
         } else if (type === 'hit') {
-          osc.type = 'square';
-          osc.frequency.setValueAtTime(160, now);
-          osc.frequency.exponentialRampToValueAtTime(35, now + 0.1);
-          gain.gain.setValueAtTime(0.18, now);
-          gain.gain.linearRampToValueAtTime(0.01, now + 0.1);
+          osc.type = 'square'; osc.frequency.setValueAtTime(160, now); osc.frequency.exponentialRampToValueAtTime(35, now + 0.1);
+          gain.gain.setValueAtTime(0.18, now); gain.gain.linearRampToValueAtTime(0.01, now + 0.1);
           osc.start(now); osc.stop(now + 0.1);
         } else if (type === 'crit') {
-          osc.type = 'sawtooth';
-          osc.frequency.setValueAtTime(340, now);
-          osc.frequency.exponentialRampToValueAtTime(70, now + 0.18);
-          gain.gain.setValueAtTime(0.22, now);
-          gain.gain.linearRampToValueAtTime(0.01, now + 0.18);
+          osc.type = 'sawtooth'; osc.frequency.setValueAtTime(340, now); osc.frequency.exponentialRampToValueAtTime(70, now + 0.18);
+          gain.gain.setValueAtTime(0.22, now); gain.gain.linearRampToValueAtTime(0.01, now + 0.18);
           osc.start(now); osc.stop(now + 0.18);
         } else if (type === 'win') {
-          osc.type = 'sine';
-          osc.frequency.setValueAtTime(261.63, now);
-          osc.frequency.setValueAtTime(329.63, now + 0.1);
-          osc.frequency.setValueAtTime(392.00, now + 0.2);
-          osc.frequency.setValueAtTime(523.25, now + 0.3);
-          gain.gain.setValueAtTime(0.2, now);
-          gain.gain.linearRampToValueAtTime(0.01, now + 0.6);
+          osc.type = 'sine'; osc.frequency.setValueAtTime(261.63, now); osc.frequency.setValueAtTime(329.63, now + 0.1);
+          gain.gain.setValueAtTime(0.2, now); gain.gain.linearRampToValueAtTime(0.01, now + 0.6);
           osc.start(now); osc.stop(now + 0.6);
         }
       } catch(e) {}
@@ -490,15 +531,6 @@
       }
     ];
 
-    var namePrefixes = ["Valerius", "Kaelen", "Aethelgard", "Zephyros", "Ignis", "Thorgar", "Sylas", "Malakor", "Astraea", "Erydor", "Nyx", "Orion", "Zarek", "Vesper"];
-    var nameTitles = ["o Flagelo dos Céus", "a Lança Celestial", "o Devorador de Almas", "o Inabalável", "a Sombra Primordial", "o Iluminado", "o Mestre do Vazio", "o Imortal"];
-
-    function generateHeroName() {
-      var p = namePrefixes[Math.floor(Math.random() * namePrefixes.length)];
-      var t = nameTitles[Math.floor(Math.random() * nameTitles.length)];
-      return p + ", " + t;
-    }
-
     var canvas = document.getElementById('wheelCanvas');
     var ctx = canvas.getContext('2d');
     var spinBtn = document.getElementById('spinBtn');
@@ -555,7 +587,6 @@
     }
 
     function checkCoinLeaderboard(coins) {
-      var playerName = "Mestre Gacha";
       var found = false;
       for (var i = 0; i < coinLeaderboard.length; i++) {
         if (coinLeaderboard[i].name === playerName) {
@@ -564,42 +595,10 @@
           break;
         }
       }
-      if (!found) {
-        coinLeaderboard.push({ name: playerName, coins: coins });
-      }
+      if (!found) { coinLeaderboard.push({ name: playerName, coins: coins }); }
       coinLeaderboard.sort(function(a, b) { return b.coins - a.coins; });
       if (coinLeaderboard.length > 5) coinLeaderboard = coinLeaderboard.slice(0, 5);
       localStorage.setItem('gachaCoinLeaderboard', JSON.stringify(coinLeaderboard));
-    }
-
-    // FUNÇÃO DE ANÚNCIO RECOMPENSADO
-    function watchRewardedAd() {
-      var adModal = document.getElementById('adModal');
-      var countdownEl = document.getElementById('adCountdown');
-      adModal.style.display = 'flex';
-      var timeLeft = 3;
-      countdownEl.innerText = timeLeft + "s";
-
-      var adInterval = setInterval(function() {
-        timeLeft--;
-        if (timeLeft > 0) {
-          countdownEl.innerText = timeLeft + "s";
-        } else {
-          clearInterval(adInterval);
-          adModal.style.display = 'none';
-          
-          // Recompensa: +10 moedas e +1 energia
-          totalCoins += 10;
-          coinBalance.innerText = totalCoins;
-          saveCoins();
-
-          pvpEnergy = Math.min(maxEnergy, pvpEnergy + 1);
-          localStorage.setItem('gachaPvpEnergy', pvpEnergy);
-          updateEnergyUI();
-
-          alert("🎁 Recompensa recebida! +10 🪙 Moedas e +1 ⚡ Energia PvP ganhas!");
-        }
-      }, 1000);
     }
 
     function initAutoSpinUI() {
@@ -687,6 +686,7 @@
         checkEnergyRegen();
         populatePvPFighterSelect();
       }
+      window.scrollTo(0, 0);
     }
 
     function checkEnergyRegen() {
@@ -873,16 +873,8 @@
         dummyCtx.fill();
         dummyCtx.restore();
 
-        p.x += p.vx;
-        p.y += p.vy;
-        p.vy += p.gravity;
-        p.vx *= 0.96;
-
-        if (p.y >= 104) {
-          p.y = 104;
-          p.vy = -p.vy * 0.2;
-          p.vx *= 0.8;
-        }
+        p.x += p.vx; p.y += p.vy; p.vy += p.gravity; p.vx *= 0.96;
+        if (p.y >= 104) { p.y = 104; p.vy = -p.vy * 0.2; p.vx *= 0.8; }
         p.alpha -= 0.012;
         if (p.alpha <= 0) dummyParticles.splice(i, 1);
       }
@@ -938,14 +930,11 @@
             var angle = (Math.random() - 0.5) * Math.PI;
             var spd = 1.0 + Math.random() * 3.0;
             dummyParticles.push({
-              x: 220,
-              y: 80,
+              x: 220, y: 80,
               vx: Math.cos(angle) * spd + (Math.random() - 0.5) * 2,
               vy: Math.sin(angle) * spd - 2.0,
               size: 2 + Math.random() * 3,
-              color: col,
-              alpha: 1.0,
-              gravity: 0.18
+              color: col, alpha: 1.0, gravity: 0.18
             });
           }
 
@@ -1064,7 +1053,7 @@
       bossCtx = bossCanvas.getContext('2d');
 
       var heroTotalPts = hero.totalPoints + (hero.artifactBonus || 0);
-      var heroDefense = charData.defense ? 80 : 50;
+      var heroDefense = 80;
 
       var f1 = { homeX: 75, x: 75, baseY: 90, y: 90, shape: hero.race.shape || "rect", color: hero.race.color || "#3498db", hp: 100, maxHp: 100, element: hero.race.element || "fisico", scaleY: 1 };
       var f2 = { homeX: 275, x: 275, baseY: 90, y: 90, shape: bossTemplate.shape, color: bossTemplate.color, hp: bossTemplate.hp, maxHp: bossTemplate.maxHp, element: bossTemplate.element, scaleY: 1 };
@@ -1452,17 +1441,16 @@
       localStorage.setItem('gachaInventory', JSON.stringify(inventory));
       updateInventoryUI();
 
-      var newEntry = { name: charData.name, score: totalPoints, race: charData.race.name, skill: charData.skill };
+      var newEntry = { name: playerName + " (" + charData.name + ")", score: totalPoints, race: charData.race.name, skill: charData.skill };
       leaderboard.push(newEntry);
       leaderboard.sort(function(a, b) { return b.score - a.score; });
       if (leaderboard.length > 5) leaderboard = leaderboard.slice(0, 5);
       localStorage.setItem('gachaLeaderboard', JSON.stringify(leaderboard));
       updateLeaderboardUI();
 
-      // Envia automaticamente para a tabela Ranking no Supabase
-      salvarRankingSupabase(charData.name, totalPoints);
+      salvarNoSupabase(charData.name, totalPoints, charData.race.name);
 
-      alert("💾 Personagem guardado com sucesso no inventário e enviado para o Supabase!");
+      alert("💾 Personagem guardado no inventário e enviado para o Supabase!");
       resetGameForNewCharacter();
     }
 
@@ -1661,14 +1649,14 @@
           addFloatingText(defender.x - 10, defender.y - 22, "-" + finalDmg, isCrit ? "#f1c40f" : "#ff4757");
 
           if (isCrit) {
-            setNarration("💥 " + speedUsed + "! " + attackerName + " usa [" + weaponNameUsed + "] (CRÍTICO: -" + finalDmg + ")");
+            setNarration("💥 " + speedUsed + "! " + (isF1Turn ? playerName : attackerName) + " usa [" + weaponNameUsed + "] (CRÍTICO: -" + finalDmg + ")");
           } else {
-            setNarration("⚔️ " + attackerName + " ataca com [" + weaponNameUsed + "] (-" + finalDmg + ")");
+            setNarration("⚔️ " + (isF1Turn ? playerName : attackerName) + " ataca com [" + weaponNameUsed + "] (-" + finalDmg + ")");
           }
 
           var p1Lbl = document.getElementById('p1Label');
           var p2Lbl = document.getElementById('p2Label');
-          if (p1Lbl) p1Lbl.innerText = myFighter.name + " (HP: " + Math.round(f1.hp) + ")";
+          if (p1Lbl) p1Lbl.innerText = playerName + " (HP: " + Math.round(f1.hp) + ")";
           if (p2Lbl) p2Lbl.innerText = enemyFighter.name + " (HP: " + Math.round(f2.hp) + ")";
 
           checkBattleEnd();
@@ -1686,7 +1674,7 @@
               setNarration("🏆 VITÓRIA ÉPICA NA ARENA!"); 
               pvpActiveTimeout = setTimeout(function() { outcomeCallback(true); }, 1200);
             } else {
-              f1.hp = 0; var p1Lbl = document.getElementById('p1Label'); if (p1Lbl) p1Lbl.innerText = myFighter.name + " (HP: 0)";
+              f1.hp = 0; var p1Lbl = document.getElementById('p1Label'); if (p1Lbl) p1Lbl.innerText = playerName + " (HP: 0)";
               setNarration("💀 DERROTA NA ARENA."); 
               pvpActiveTimeout = setTimeout(function() { outcomeCallback(false); }, 1200);
             }
@@ -1756,7 +1744,7 @@
 
       var randomRaceObj = db[Math.floor(Math.random() * db.length)];
       currentOpponent = {
-        name: generateHeroName(),
+        name: "Oponente Bot",
         totalPoints: enemyPoints,
         race: { name: randomRaceObj.name, color: randomRaceObj.color, shape: randomRaceObj.shape, weapon: randomRaceObj.weapon, element: randomRaceObj.element },
         speed: "Velocidade da Luz",
@@ -1765,7 +1753,7 @@
 
       document.getElementById('pvpEnemyBadge').innerText = "⚔️ MODO: " + botDifficulty.toUpperCase() + " | Inimigo: " + enemyPoints + " pts";
       document.getElementById('pvpSearchScreen').style.display = "none";
-      document.getElementById('pvpMyFighterInfo').innerHTML = "<b>" + activePvpFighter.name + "</b> [" + activePvpFighter.race.weapon + "] — " + myTotalPts + " pts";
+      document.getElementById('pvpMyFighterInfo').innerHTML = "<b>" + playerName + " (" + activePvpFighter.name + ")</b> [" + activePvpFighter.race.weapon + "] — " + myTotalPts + " pts";
       document.getElementById('pvpEnemyFighterInfo').innerHTML = "<b>" + currentOpponent.name + "</b> [" + currentOpponent.race.weapon + "] — " + currentOpponent.totalPoints + " pts";
       document.getElementById('pvpBattleScreen').style.display = "block";
 
@@ -1800,14 +1788,14 @@
         else if (step === 'SKILL_CATEGORY') {
           if (tempSkillCategory.category === "Sem Habilidade") {
             charData.skillObj = tempSkillCategory.skills[0];
-            charData.name = generateHeroName();
+            charData.name = playerName;
             cardName.innerHTML = "👤 Nome: <span>" + charData.name + "</span>";
             step = 'DONE'; stepTitle.innerText = "✨ FICHA CONCLUÍDA! ✨";
             spinBtn.style.display = "none"; document.getElementById('doneActions').style.display = "flex";
             return;
           } else { step = 'SKILL_SELECT'; stepTitle.innerText = "Sorteio: " + tempSkillCategory.category; }
         } else if (step === 'SKILL_SELECT') {
-          charData.name = generateHeroName();
+          charData.name = playerName;
           cardName.innerHTML = "👤 Nome: <span>" + charData.name + "</span>";
           step = 'DONE'; stepTitle.innerText = "✨ FICHA CONCLUÍDA! ✨";
           spinBtn.style.display = "none"; document.getElementById('doneActions').style.display = "flex";
@@ -1879,9 +1867,6 @@
         });
       }
     }
-
-    initAutoSpinUI();
-    drawWheel(0);
   </script>
 </body>
 </html>
